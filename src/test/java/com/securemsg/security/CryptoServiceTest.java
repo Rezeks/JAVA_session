@@ -32,4 +32,16 @@ class CryptoServiceTest {
         assertTrue(cryptoService.verify(payload, signature, keyPair.getPublic()));
         assertFalse(cryptoService.verify(payload + "tampered", signature, keyPair.getPublic()));
     }
+
+    @Test
+    void shouldWrapAndUnwrapMessageKey() {
+        InMemoryKeyVault keyVault = new InMemoryKeyVault();
+        KeyPair keyPair = keyVault.getOrCreateSigningKeyPair("bob");
+        byte[] messageKey = CryptoService.generateRandomBytes(32);
+
+        String wrapped = cryptoService.wrapKey(messageKey, keyPair.getPublic());
+        byte[] unwrapped = cryptoService.unwrapKey(wrapped, keyPair.getPrivate());
+
+        assertArrayEquals(messageKey, unwrapped);
+    }
 }

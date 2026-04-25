@@ -23,6 +23,7 @@ class MessagingServiceTest {
         UUID bob = UUID.randomUUID();
 
         Message message = messagingService.send(alice, bob, "hello bob");
+        assertTrue(message.wrappedMessageKey() != null && !message.wrappedMessageKey().isBlank());
         messagingService.confirmDelivery(message.id());
 
         List<Message> bobHistory = messagingService.syncHistory(bob);
@@ -31,6 +32,20 @@ class MessagingServiceTest {
 
         String decrypted = messagingService.decryptForRecipient(message, bob);
         assertEquals("hello bob", decrypted);
+    }
+
+    @Test
+    void shouldSetErrorStatus() {
+        AuditService audit = new AuditService();
+        MessagingService messagingService = new MessagingService(new CryptoService(), new InMemoryKeyVault(), audit);
+        UUID alice = UUID.randomUUID();
+        UUID bob = UUID.randomUUID();
+
+        Message message = messagingService.send(alice, bob, "hello");
+        messagingService.markError(message.id(), "network");
+
+        Message inHistory = messagingService.syncHistory(bob).getFirst();
+        assertEquals(DeliveryStatus.ERROR, inHistory.status());
     }
 
     @Test

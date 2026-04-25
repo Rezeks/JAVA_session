@@ -1,65 +1,64 @@
-# Защищённая система обмена сообщениями (Java)
+# Защищенная система обмена сообщениями (Java/Spring Boot)
 
-Этот репозиторий содержит **базовый Java-каркас** программно-аппаратной системы защищённого обмена сообщениями по модели клиент-сервер.
+Проект сделан как локальная демонстрация для сессии: максимально простой, без продовой инфраструктуры,
+но с покрытием функциональных требований из ТЗ.
 
-## Покрытие ваших требований
+## Покрытие функциональных требований
 
-### 1. Цель разработки
+### 2.1.1 Аутентификация и управление доступом
 
-Реализован каркас, который закладывает:
-- конфиденциальность — шифрование AES-GCM на стороне клиента (`CryptoService`);
-- целостность и подлинность — цифровая подпись RSA (`CryptoService#sign/verify`);
-- защищённое хранение ключей — абстракция `KeyVault` (заглушка `InMemoryKeyVault`, легко заменить на HSM/TPM);
-- устойчивость к сбоям — разделение на сервисы + аудит + подготовка к репликации/восстановлению;
-- защиту от перехвата/подмены — предусмотрена проверка подписи и рекомендация mTLS в `Application`.
+- Регистрация с генерацией пары ключей: `UserService#register`, `KeyVault#getOrCreateSigningKeyPair`.
+- Двухфакторная аутентификация (пароль + аппаратный токен): `UserService#authenticate(login,password,hardwareToken)`.
+- Ролевая модель доступа: `Role.ADMIN`, `Role.OPERATOR`, `Role.USER` + назначение через `UserService#assignRole`.
+- Автоблокировка при неуспешных входах: `UserService` (порог 5 попыток).
 
-### 2. Основные задачи
+### 2.1.2 Обмен сообщениями
 
-Поддержаны сервисные сценарии:
-- безопасная передача сообщений (`MessagingService#send`);
-- защита от несанкционированного доступа (проверки прав удаления, подписи);
-- защита ключей на аппаратном уровне (через `KeyVault`-адаптер);
-- аудит (`AuditService`);
-- основа для непрерывности работы (сервисная архитектура, возможность подключить persistent storage и failover).
+- Отправка/прием текстовых сообщений: `MessagingService#send`, `syncHistory`, `pullOfflineMessages`.
+- Групповые чаты: `createGroup`, `sendGroupMessage`.
+- Офлайн-доставка через очередь получателя: `offlineQueueByRecipient`.
+- Статусы доставки: `QUEUED`, `SENT`, `DELIVERED`, `READ`, `ERROR`, `DELETED`.
+- Kafka интеграция (локально): события `message.sent`, `message.delivered`, `message.error`, `group.message.sent`.
 
-## Функциональные требования (6.x)
+### 2.1.3 Передача файлов
 
-### 6.1 Управление пользователями
-- регистрация: `UserService#register`;
-- подтверждение учётной записи: `UserService#confirm`;
-- вход логин/пароль: `UserService#authenticate`;
-- смена пароля: `UserService#changePassword`;
-- блокировка при подозрениях: `UserService#block`.
+- Передача файлов до 2 ГБ: `FileTransferService#initiateUpload`.
+- Потоковое шифрование: `CryptoService#encryptStream`.
+- Возобновление передачи с offset: `uploadChunk(transferId, offset, inputStream)`.
+- Проверка хеша файла у получателя: `verifyChecksum`.
 
-### 6.2 Обмен сообщениями
-- личные сообщения: `MessagingService#send`;
-- подтверждение доставки: `MessagingService#confirmDelivery`;
-- хранение шифротекста на сервере: `Message.encryptedPayload`;
-- удаление по политике: `MessagingService#deleteMessage`;
-- синхронизация истории: `MessagingService#syncHistory`.
+### 2.1.4 Криптографические операции
 
-### 6.3 Шифрование и защита канала
-- шифрование до передачи: AES-GCM в `CryptoService`;
-- защита от MITM: проектно заложены цифровые подписи и требование mTLS;
-- цифровые подписи: `CryptoService#sign/verify`.
+- Генерация/импорт/экспорт ключевых пар: `KeyVault`, `InMemoryKeyVault`.
+- Подпись и проверка подписи каждого сообщения: `CryptoService#sign/verify`.
+- Авто-ротация сессионного ключа не реже 1 раза в час: `MessagingService#rotateKeyIfNeeded`.
+- Forward secrecy (упрощенно для демо): одноразовый ключ на сообщение + обертка RSA-OAEP (`wrappedMessageKey`).
+- Post-compromise security (упрощенно для демо): `recoverAfterCompromise` в `UserService` и `MessagingService`.
 
-### 6.4 Администрирование
-- управление аккаунтами: через `UserService`;
-- просмотр журналов: `AuditService#allEvents`;
-- политики безопасности: расширяются на уровне сервисов;
-- параметры отказоустойчивости: готово к выносу в конфигурацию и кластерный режим.
+## Демо API
+
+- Пользователи: `POST /api/users/register`, `POST /api/users/{login}/confirm`, `POST /api/users/auth`,
+  `POST /api/users/{login}/role`, `POST /api/users/{login}/password`, `POST /api/users/{login}/block`,
+  `POST /api/users/{login}/token/rotate`, `POST /api/users/{login}/recover`.
+- Сообщения: `POST /api/messages/send`, `POST /api/messages/{messageId}/deliver`,
+  `POST /api/messages/{messageId}/read?readerId=...`, `POST /api/messages/{messageId}/error`,
+  `GET /api/messages/history/{userId}`, `GET /api/messages/offline/{userId}`,
+  `POST /api/messages/group`, `POST /api/messages/group/{groupId}/send`.
+- Файлы: `POST /api/files/init`, `POST /api/files/{transferId}/chunk?offset=...`,
+  `POST /api/files/{transferId}/finalize`, `GET /api/files/{transferId}/verify?checksum=...`,
+  `POST /api/files/{transferId}/delivered`.
+- Ключи и аудит: `GET /api/keys/{ownerId}/public`, `GET /api/keys/{ownerId}/private`,
+  `POST /api/keys/{ownerId}/import`, `GET /api/audit`.
 
 ## Запуск
 
 ```bash
 mvn test
-mvn exec:java -Dexec.mainClass=com.securemsg.Application
+mvn spring-boot:run
 ```
 
-## Что добавить следующим этапом
+## Локальный режим
 
-1. REST/gRPC/WebSocket API.
-2. PostgreSQL + шифрование at-rest.
-3. Настоящий HSM/TPM-провайдер (`KeyVault` implementation).
-4. mTLS + certificate pinning.
-5. Репликация БД, очередь событий, health-check и алерты.
+1. Kafka ожидается на `localhost:9092`.
+2. Файлы пишутся в локальную папку `storage/`.
+3. `KeyVault` — in-memory эмуляция HSM/TPM для учебного демо.

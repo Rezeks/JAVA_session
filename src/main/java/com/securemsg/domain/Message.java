@@ -7,13 +7,18 @@ public record Message(
         UUID id,
         UUID senderId,
         UUID recipientId,
+        UUID groupId,
         String encryptedPayload,
+        String wrappedMessageKey,
+        int ratchetStep,
         String signature,
+        UUID attachmentId,
         DeliveryStatus status,
         Instant createdAt,
         Instant updatedAt
 ) {
     public Message withStatus(DeliveryStatus newStatus) {
-        return new Message(id, senderId, recipientId, encryptedPayload, signature, newStatus, createdAt, Instant.now());
+        return new Message(id, senderId, recipientId, groupId, encryptedPayload, wrappedMessageKey,
+                ratchetStep, signature, attachmentId, newStatus, createdAt, Instant.now());
     }
 }

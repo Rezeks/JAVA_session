@@ -1,8 +1,13 @@
 package com.securemsg.security;
 
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
@@ -73,9 +78,59 @@ public class CryptoService {
         }
     }
 
+    public String wrapKey(byte[] key, PublicKey publicKey) {
+        try {
+            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            return Base64.getEncoder().encodeToString(cipher.doFinal(key));
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Failed to wrap key", e);
+        }
+    }
+
+    public byte[] unwrapKey(String wrappedKey, PrivateKey privateKey) {
+        try {
+            Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
+            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            return cipher.doFinal(Base64.getDecoder().decode(wrappedKey));
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Failed to unwrap key", e);
+        }
+    }
+
     public static byte[] generateRandomBytes(int size) {
         byte[] bytes = new byte[size];
         new SecureRandom().nextBytes(bytes);
         return bytes;
+    }
+
+    public void encryptStream(InputStream source, OutputStream destination, byte[] key) {
+        try {
+            byte[] iv = generateRandomBytes(IV_SIZE);
+            destination.write(iv);
+            Cipher cipher = Cipher.getInstance(AES_GCM);
+            cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, AES_ALGO), new GCMParameterSpec(GCM_TAG_BITS, iv));
+            try (CipherOutputStream encrypted = new CipherOutputStream(destination, cipher)) {
+                source.transferTo(encrypted);
+            }
+        } catch (GeneralSecurityException | IOException e) {
+            throw new IllegalStateException("Failed to encrypt stream", e);
+        }
+    }
+
+    public void decryptStream(InputStream source, OutputStream destination, byte[] key) {
+        try {
+            byte[] iv = source.readNBytes(IV_SIZE);
+            if (iv.length != IV_SIZE) {
+                throw new IllegalStateException("Invalid encrypted stream header");
+            }
+            Cipher cipher = Cipher.getInstance(AES_GCM);
+            cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, AES_ALGO), new GCMParameterSpec(GCM_TAG_BITS, iv));
+            try (CipherInputStream decrypted = new CipherInputStream(source, cipher)) {
+                decrypted.transferTo(destination);
+            }
+        } catch (GeneralSecurityException | IOException e) {
+            throw new IllegalStateException("Failed to decrypt stream", e);
+        }
     }
 }
