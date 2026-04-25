@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo UI - Личные сообщения</title>
+  <link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Личные сообщения</h1>
+    <p>Показывает полный цикл: отправка -> доставка -> прочтение/ошибка -> история/офлайн.</p>
+  </header>
+
+  <nav class="nav-bar">
+    <a class="nav-link" href="/ui/index.html">Главная</a>
+    <a class="nav-link" href="/ui/users.html">Пользователи</a>
+    <a class="nav-link active" href="/ui/messages.html">Личные сообщения</a>
+    <a class="nav-link" href="/ui/groups.html">Группы</a>
+    <a class="nav-link" href="/ui/files.html">Файлы</a>
+    <a class="nav-link" href="/ui/audit.html">Ключи и аудит</a>
+  </nav>
+
+  <main>
+    <section class="card">
+      <h2>Методы страницы</h2>
+      <ul class="method-list">
+        <li><code>POST /api/messages/send</code> - отправка личного сообщения.</li>
+        <li><code>POST /api/messages/{messageId}/deliver</code> - статус delivered.</li>
+        <li><code>POST /api/messages/{messageId}/read?readerId=...</code> - статус read.</li>
+        <li><code>POST /api/messages/{messageId}/error</code> - статус error.</li>
+        <li><code>GET /api/messages/history/{userId}</code> - история пользователя.</li>
+        <li><code>GET /api/messages/offline/{userId}</code> - офлайн-пулл.</li>
+      </ul>
+      <p id="messages-explain" class="explain">Отправь сообщение и управлять его статусом через кнопки ниже.</p>
+    </section>
+
+    <section class="card">
+      <h2>Действия по сценариям</h2>
+
+      <div class="scenario">
+        <h3>Сценарий A: Отправка личного сообщения</h3>
+        <p class="helper">Создает зашифрованное и подписанное сообщение от отправителя к получателю.</p>
+        <div class="row">
+          <div class="field">
+            <label>Отправитель <span class="required">обязательно</span></label>
+            <select id="sender-select"></select>
+          </div>
+          <div class="field">
+            <label>Получатель <span class="required">обязательно</span></label>
+            <select id="recipient-select"></select>
+          </div>
+          <div class="field">
+            <label>Текст сообщения <span class="required">обязательно</span></label>
+            <input id="msg-text" placeholder="текст сообщения">
+          </div>
+          <button id="btn-send">Отправить</button>
+        </div>
+      </div>
+
+      <div class="scenario">
+        <h3>Сценарий B: Управление статусом сообщения</h3>
+        <p class="helper">Используй `messageId` из шага A: пометь доставку, прочтение или ошибку.</p>
+        <div class="row">
+          <div class="field">
+            <label>ID сообщения <span class="required">обязательно</span></label>
+            <input id="message-id" placeholder="messageId">
+          </div>
+          <div class="field">
+            <label>Кто читает (для Read) <span class="optional">опционально</span></label>
+            <select id="reader-select"></select>
+          </div>
+          <button id="btn-deliver">Поставить DELIVERED</button>
+          <button id="btn-read">Поставить READ</button>
+          <button id="btn-error">Поставить ERROR</button>
+        </div>
+      </div>
+
+      <div class="step-grid">
+        <div id="m-step-send" class="step step-wait">1. SENT</div>
+        <div id="m-step-deliver" class="step step-wait">2. DELIVERED</div>
+        <div id="m-step-read" class="step step-wait">3. READ</div>
+        <div id="m-step-error" class="step step-wait">Alt: ERROR</div>
+      </div>
+      <p class="tip">Подсказка: обычно показывают путь SENT -> DELIVERED -> READ. ERROR можно показать как альтернативный исход.</p>
+    </section>
+
+    <section class="card">
+      <h2>Сценарий C: История и офлайн-пулл</h2>
+      <p class="helper">Показывает накопленные сообщения пользователя и очередь офлайн-доставки.</p>
+      <div class="row">
+        <div class="field">
+          <label>Пользователь <span class="required">обязательно</span></label>
+          <select id="history-user-select"></select>
+        </div>
+        <button id="btn-history">Показать историю</button>
+        <button id="btn-offline">Считать офлайн-очередь</button>
+      </div>
+      <pre id="messages-out" class="out"></pre>
+    </section>
+  </main>
+
+  <script src="/ui/common.js"></script>
+  <script src="/ui/messages.js"></script>
+</body>
+</html>
+
+

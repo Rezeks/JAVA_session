@@ -50,6 +50,28 @@
 - Ключи и аудит: `GET /api/keys/{ownerId}/public`, `GET /api/keys/{ownerId}/private`,
   `POST /api/keys/{ownerId}/import`, `GET /api/audit`.
 
+## Visual demo UI
+
+- В проект добавлен многостраничный локальный UI в `src/main/resources/static/ui/*`.
+- После запуска открой: `http://localhost:8080` (редирект на `http://localhost:8080/ui/index.html`).
+- UI работает поверх существующих endpoint-ов `DemoController` (`/api/*`) и подходит для показа на сессии.
+
+### Страницы UI
+
+- `http://localhost:8080/ui/users.html` - регистрация, confirm, 2FA, роли, block/recover.
+- `http://localhost:8080/ui/messages.html` - send/deliver/read/error, history, offline pull.
+- `http://localhost:8080/ui/groups.html` - create group и send group message.
+- `http://localhost:8080/ui/files.html` - init/chunk/finalize/verify/delivered для файлов.
+- `http://localhost:8080/ui/audit.html` - export/import ключей и просмотр аудита.
+
+### Быстрый сценарий показа
+
+1. Открой `users.html`: зарегистрируй 2 пользователей, confirm, auth 2FA.
+2. Открой `messages.html`: отправь сообщение, затем deliver/read и покажи history.
+3. Открой `groups.html`: создай группу и отправь group message.
+4. Открой `files.html`: выполни pipeline загрузки файла.
+5. Открой `audit.html`: покажи ключи и журнал событий.
+
 ## Запуск
 
 ```bash

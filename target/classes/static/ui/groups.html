@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo UI - Группы</title>
+  <link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Групповые чаты</h1>
+    <p>Показывает создание группы и рассылку одного сообщения всем участникам.</p>
+  </header>
+
+  <nav class="nav-bar">
+    <a class="nav-link" href="/ui/index.html">Главная</a>
+    <a class="nav-link" href="/ui/users.html">Пользователи</a>
+    <a class="nav-link" href="/ui/messages.html">Личные сообщения</a>
+    <a class="nav-link active" href="/ui/groups.html">Группы</a>
+    <a class="nav-link" href="/ui/files.html">Файлы</a>
+    <a class="nav-link" href="/ui/audit.html">Ключи и аудит</a>
+  </nav>
+
+  <main>
+    <section class="card">
+      <h2>Методы страницы</h2>
+      <ul class="method-list">
+        <li><code>POST /api/messages/group</code> - создание группы с участниками.</li>
+        <li><code>POST /api/messages/group/{groupId}/send</code> - отправка сообщения в группу.</li>
+      </ul>
+      <p id="groups-explain" class="explain">Укажи owner и участников (по логинам), затем отправь сообщение в группу.</p>
+    </section>
+
+    <section class="card">
+      <h2>Действия по сценариям</h2>
+
+      <div class="scenario">
+        <h3>Сценарий A: Создание группы</h3>
+        <p class="helper">Создает чат с владельцем и списком участников (по логинам через запятую).</p>
+        <div class="row">
+          <div class="field">
+            <label>Владелец группы <span class="required">обязательно</span></label>
+            <select id="group-owner-select"></select>
+          </div>
+          <div class="field">
+            <label>Название группы <span class="required">обязательно</span></label>
+            <input id="group-name" placeholder="например: project-team">
+          </div>
+          <div class="field">
+            <label>Участники по логинам <span class="optional">необязательно</span></label>
+            <input id="group-members" placeholder="alice,bob,carol">
+          </div>
+          <button id="btn-create-group">Создать группу</button>
+        </div>
+      </div>
+
+      <div class="step-grid">
+        <div id="g-step-create" class="step step-wait">1. Группа создана</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Сценарий B: Отправка в группу</h2>
+      <p class="helper">Отправляет сообщение в созданную группу и показывает fan-out на участников.</p>
+      <div class="row">
+        <div class="field">
+          <label>ID группы <span class="required">обязательно</span></label>
+          <input id="group-id" placeholder="group id">
+        </div>
+        <div class="field">
+          <label>Отправитель <span class="required">обязательно</span></label>
+          <select id="group-sender-select"></select>
+        </div>
+        <div class="field">
+          <label>Текст <span class="required">обязательно</span></label>
+          <input id="group-text" placeholder="message text">
+        </div>
+        <button id="btn-send-group">Отправить в группу</button>
+      </div>
+      <div class="step-grid">
+        <div id="g-step-send" class="step step-wait">2. Рассылка участникам</div>
+      </div>
+      <p class="tip">Подсказка: сначала выполни сценарий A, затем сценарий B с полученным `groupId`.</p>
+      <pre id="groups-out" class="out"></pre>
+    </section>
+  </main>
+
+  <script src="/ui/common.js"></script>
+  <script src="/ui/groups.js"></script>
+</body>
+</html>
+
+

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo UI - Ключи и аудит</title>
+  <link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Крипто-методы и аудит</h1>
+    <p>Визуально показывает операции с ключами и журнал событий безопасности.</p>
+  </header>
+
+  <nav class="nav-bar">
+    <a class="nav-link" href="/ui/index.html">Главная</a>
+    <a class="nav-link" href="/ui/users.html">Пользователи</a>
+    <a class="nav-link" href="/ui/messages.html">Личные сообщения</a>
+    <a class="nav-link" href="/ui/groups.html">Группы</a>
+    <a class="nav-link" href="/ui/files.html">Файлы</a>
+    <a class="nav-link active" href="/ui/audit.html">Ключи и аудит</a>
+  </nav>
+
+  <main>
+    <section class="card">
+      <h2>Методы страницы</h2>
+      <ul class="method-list">
+        <li><code>GET /api/keys/{ownerId}/public</code> - экспорт публичного ключа.</li>
+        <li><code>GET /api/keys/{ownerId}/private</code> - экспорт приватного ключа (демо-режим).</li>
+        <li><code>POST /api/keys/{ownerId}/import</code> - импорт пары ключей.</li>
+        <li><code>GET /api/audit</code> - полный список аудита.</li>
+      </ul>
+      <p id="audit-explain" class="explain">Выбери пользователя и выполни операции с ключами, затем обнови аудит.</p>
+    </section>
+
+    <section class="card">
+      <h2>Действия по сценариям</h2>
+
+      <div class="scenario">
+        <h3>Сценарий A: Экспорт ключей</h3>
+        <p class="helper">Выбери пользователя и получи public/private ключ для демонстрации key-management.</p>
+        <div class="row">
+          <div class="field">
+            <label>Пользователь-владелец ключа <span class="required">обязательно</span></label>
+            <select id="key-user-select"></select>
+          </div>
+          <button id="btn-export-pub">Экспорт public key</button>
+          <button id="btn-export-priv">Экспорт private key</button>
+        </div>
+      </div>
+
+      <div class="scenario">
+        <h3>Сценарий B: Импорт ключевой пары</h3>
+        <p class="helper">Можно вставить экспортированные ключи обратно, чтобы показать обратную операцию.</p>
+        <div class="row">
+          <div class="field">
+            <label>ownerId (UUID) <span class="required">обязательно</span></label>
+            <input id="import-owner-id" placeholder="ownerId (UUID)">
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Public key <span class="required">обязательно</span></label>
+            <textarea id="import-public" placeholder="public key" rows="4"></textarea>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Private key <span class="required">обязательно</span></label>
+            <textarea id="import-private" placeholder="private key" rows="4"></textarea>
+          </div>
+        </div>
+        <div class="row">
+          <button id="btn-import-keys">Импортировать ключи</button>
+        </div>
+      </div>
+
+      <pre id="keys-out" class="out"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Сценарий C: Просмотр журнала аудита</h2>
+      <p class="helper">Показывает трассировку действий по пользователям, сообщениям, файлам и ключам.</p>
+      <div class="row">
+        <button id="btn-audit">Обновить аудит</button>
+      </div>
+      <pre id="audit-out" class="out"></pre>
+    </section>
+  </main>
+
+  <script src="/ui/common.js"></script>
+  <script src="/ui/audit.js"></script>
+</body>
+</html>
+
+

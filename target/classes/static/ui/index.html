@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Messaging Demo UI</title>
+  <link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Secure Messaging Demo</h1>
+    <p>Локальная визуальная часть для защиты проекта. Все вызовы идут в <code>/api/*</code>.</p>
+  </header>
+
+  <nav class="nav-bar">
+    <a class="nav-link active" href="/ui/index.html">Главная</a>
+    <a class="nav-link" href="/ui/users.html">Пользователи</a>
+    <a class="nav-link" href="/ui/messages.html">Личные сообщения</a>
+    <a class="nav-link" href="/ui/groups.html">Группы</a>
+    <a class="nav-link" href="/ui/files.html">Файлы</a>
+    <a class="nav-link" href="/ui/audit.html">Ключи и аудит</a>
+  </nav>
+
+  <main class="grid-2">
+    <section class="card tile">
+      <h2>Как показывать интерфейс</h2>
+      <p>На каждой странице действия разделены на сценарии: что вводить, что обязательно, что получится на выходе.</p>
+      <p class="muted">Рекомендуемый порядок для защиты: Пользователи -> Личные сообщения -> Группы -> Файлы -> Ключи и аудит.</p>
+    </section>
+
+    <section class="card tile">
+      <h2>1) Аутентификация и доступ</h2>
+      <p>Регистрация, подтверждение, 2FA, роли, блокировка и recovery.</p>
+      <p class="muted">Методы: <code>/api/users/*</code></p>
+      <a class="btn-link" href="/ui/users.html">Открыть страницу</a>
+    </section>
+
+    <section class="card tile">
+      <h2>2) Личные сообщения</h2>
+      <p>Отправка, доставка, прочтение, ошибка, история и офлайн-пулл.</p>
+      <p class="muted">Методы: <code>/api/messages/*</code></p>
+      <a class="btn-link" href="/ui/messages.html">Открыть страницу</a>
+    </section>
+
+    <section class="card tile">
+      <h2>3) Групповые чаты</h2>
+      <p>Создание группы и отправка в группу с визуализацией результата.</p>
+      <p class="muted">Методы: <code>/api/messages/group*</code></p>
+      <a class="btn-link" href="/ui/groups.html">Открыть страницу</a>
+    </section>
+
+    <section class="card tile">
+      <h2>4) Передача файлов</h2>
+      <p>Init/chunk/finalize/verify/delivered с прогрессом шагов.</p>
+      <p class="muted">Методы: <code>/api/files/*</code></p>
+      <a class="btn-link" href="/ui/files.html">Открыть страницу</a>
+    </section>
+
+    <section class="card tile">
+      <h2>5) Ключи и аудит</h2>
+      <p>Экспорт/импорт ключей и просмотр аудита в реальном времени.</p>
+      <p class="muted">Методы: <code>/api/keys/*</code>, <code>/api/audit</code></p>
+      <a class="btn-link" href="/ui/audit.html">Открыть страницу</a>
+    </section>
+  </main>
+</body>
+</html>
+
+
+
