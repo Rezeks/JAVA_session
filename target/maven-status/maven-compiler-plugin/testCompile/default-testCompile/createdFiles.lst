@@ -1,0 +1,4 @@
+com\securemsg\service\FileTransferServiceTest.class
+com\securemsg\service\MessagingServiceTest.class
+com\securemsg\security\CryptoServiceTest.class
+com\securemsg\service\UserServiceTest.class
