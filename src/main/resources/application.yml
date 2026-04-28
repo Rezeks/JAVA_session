@@ -1,6 +1,20 @@
 spring:
   application:
     name: secure-messaging-system
+  datasource:
+    url: jdbc:postgresql://localhost:5432/securemsg
+    username: postgres
+    password: 123123
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 10
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
@@ -17,4 +31,6 @@ server:
 securemsg:
   kafka:
     consumer-enabled: true
+  encryption:
+    default-method: AES_256_GCM
 
