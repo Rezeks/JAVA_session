@@ -1,4 +1,5 @@
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\api\DemoController.java
+C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\api\EncryptionComparisonController.java
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\api\KafkaAuditConsumer.java
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\Application.java
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\domain\AuditEvent.java
@@ -11,6 +12,7 @@ C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\domain\Rol
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\domain\User.java
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\domain\UserStatus.java
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\security\CryptoService.java
+C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\security\EncryptionComparisonService.java
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\security\InMemoryKeyVault.java
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\security\KeyVault.java
 C:\Users\Rezeks\IdeaProjects\JAVA_session\src\main\java\com\securemsg\service\AuditService.java
