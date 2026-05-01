@@ -240,7 +240,13 @@ public class MessagingService {
         if (kafkaTemplate == null) {
             return;
         }
-        kafkaTemplate.send(topic, payload);
+        try {
+            kafkaTemplate.send(topic, payload);
+        } catch (Exception e) {
+            // Kafka недоступна — логируем, но не прерываем бизнес-логику.
+            // Сообщение уже сохранено в PostgreSQL.
+            System.err.println("[WARN] Kafka publish failed (topic=" + topic + "): " + e.getMessage());
+        }
     }
 
     private Message requireMessage(UUID messageId) {

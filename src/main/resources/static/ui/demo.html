@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Secure Messaging System — Демо</title>
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <span class="logo">🔐</span>
+  <h1>Secure Messaging System</h1>
+  <div class="tabs">
+    <div class="tab active" onclick="showPage('overview')">📋 Обзор</div>
+    <div class="tab" onclick="showPage('auth')">🔑 Аутентификация</div>
+    <div class="tab" onclick="showPage('messaging')">✉️ Сообщения</div>
+    <div class="tab" onclick="showPage('encryption')">🛡️ Шифрование</div>
+    <div class="tab" onclick="showPage('audit')">📊 Аудит</div>
+  </div>
+</div>
+
+<!-- ============ PAGE 1: OVERVIEW ============ -->
+<div id="page-overview" class="page active">
+  <h2 style="font-size:22px;margin-bottom:16px">🏗️ Архитектура системы</h2>
+
+  <div class="hint">
+    Это защищённая система обмена сообщениями. Все данные шифруются E2E (end-to-end),
+    пароли хешируются PBKDF2, доступ по JWT-токенам. База данных — PostgreSQL, очереди — Kafka.
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h2>🧱 Технологический стек</h2>
+    <div class="arch-grid">
+      <div class="arch-box"><div class="icon">☕</div><div class="name">Java 21</div><div class="desc">Язык, Records, Virtual Threads</div></div>
+      <div class="arch-box"><div class="icon">🍃</div><div class="name">Spring Boot 3.3</div><div class="desc">IoC, DI, Auto-config</div></div>
+      <div class="arch-box"><div class="icon">🐘</div><div class="name">PostgreSQL 15</div><div class="desc">ACID, JPA/Hibernate</div></div>
+      <div class="arch-box"><div class="icon">📨</div><div class="name">Apache Kafka</div><div class="desc">Async event streaming</div></div>
+      <div class="arch-box"><div class="icon">🔐</div><div class="name">Spring Security</div><div class="desc">JWT, RBAC, Stateless</div></div>
+      <div class="arch-box"><div class="icon">🔒</div><div class="name">AES-256-GCM</div><div class="desc">E2E шифрование</div></div>
+      <div class="arch-box"><div class="icon">📝</div><div class="name">Swagger/OpenAPI</div><div class="desc">Auto-документация API</div></div>
+      <div class="arch-box"><div class="icon">🐳</div><div class="name">Docker</div><div class="desc">Контейнеризация</div></div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>🔄 Поток сообщения</h2>
+      <div class="hint">Каждое сообщение проходит 5 шагов: генерация ключа → шифрование → подпись → отправка → расшифровка</div>
+      <div class="flow">
+        <div class="flow-node">📱 Отправитель</div><span class="flow-arrow">→</span>
+        <div class="flow-node">🔑 AES ключ</div><span class="flow-arrow">→</span>
+        <div class="flow-node">🔒 GCM Encrypt</div><span class="flow-arrow">→</span>
+        <div class="flow-node">✍️ RSA Sign</div><span class="flow-arrow">→</span>
+        <div class="flow-node">🐘 PostgreSQL</div><span class="flow-arrow">→</span>
+        <div class="flow-node">📱 Получатель</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🔑 Аутентификация</h2>
+      <div class="hint">Двухфакторная: пароль (PBKDF2-SHA256, 100K итераций) + аппаратный токен. Выдаётся JWT на 1 час.</div>
+      <div class="flow">
+        <div class="flow-node">👤 Логин</div><span class="flow-arrow">→</span>
+        <div class="flow-node">🔐 PBKDF2</div><span class="flow-arrow">→</span>
+        <div class="flow-node">📟 2FA Токен</div><span class="flow-arrow">→</span>
+        <div class="flow-node">🎫 JWT</div><span class="flow-arrow">→</span>
+        <div class="flow-node">✅ Доступ</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PAGE 2: AUTH ============ -->
+<div id="page-auth" class="page">
+  <h2 style="font-size:22px;margin-bottom:16px">🔑 Аутентификация и JWT</h2>
+
+  <div class="grid grid-2">
+    <!-- REGISTER -->
+    <div class="card">
+      <h2>📝 Шаг 1: Регистрация</h2>
+      <div class="hint">
+        При регистрации пароль хешируется PBKDF2-SHA256 (100 000 итераций + соль).
+        Это защищает даже при утечке БД — восстановить пароль невозможно.
+      </div>
+      <div class="steps" id="reg-steps">
+        <div class="step" id="rs1">1. Ввод данных</div>
+        <div class="step" id="rs2">2. PBKDF2 хеш</div>
+        <div class="step" id="rs3">3. Сохранение в БД</div>
+        <div class="step" id="rs4">4. Генерация JWT</div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Логин</label><input id="reg-login" value="alice" placeholder="Логин"></div>
+        <div class="field"><label>Пароль</label><input id="reg-pass" type="password" value="password123" placeholder="Пароль"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Роль</label>
+          <select id="reg-role"><option value="USER">USER</option><option value="ADMIN">ADMIN</option></select>
+        </div>
+        <div class="field"><label>2FA токен (опц.)</label><input id="reg-token" placeholder="Авто-генерация"></div>
+      </div>
+      <button class="btn btn-primary" onclick="doRegister()">🚀 Зарегистрировать</button>
+      <div id="reg-log" class="log" style="margin-top:12px"></div>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="card">
+      <h2>🔓 Шаг 2: Вход (Логин)</h2>
+      <div class="hint">
+        Логин проверяет: 1) существует ли пользователь, 2) совпадает ли хеш пароля,
+        3) верен ли 2FA токен. При 5 ошибках — автоблокировка.
+      </div>
+      <div class="steps" id="login-steps">
+        <div class="step" id="ls1">1. Ввод credentials</div>
+        <div class="step" id="ls2">2. Проверка PBKDF2</div>
+        <div class="step" id="ls3">3. Проверка 2FA</div>
+        <div class="step" id="ls4">4. Выдача JWT</div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Логин</label><input id="login-user" value="alice"></div>
+        <div class="field"><label>Пароль</label><input id="login-pass" type="password" value="password123"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>2FA токен</label><input id="login-token" placeholder="Из регистрации"></div>
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()">🔓 Войти</button>
+      <div id="login-log" class="log" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- JWT -->
+  <div class="card" style="margin-top:16px">
+    <h2>🎫 Текущий JWT токен</h2>
+    <div class="hint">JWT (JSON Web Token) — подписан HMAC-SHA256. Содержит login, role, время выпуска. Действует 1 час. Без него API возвращает 401.</div>
+    <div id="jwt-display" class="token-box">Токен появится после регистрации или входа...</div>
+    <div style="margin-top:8px;font-size:12px;color:var(--muted)">
+      <span id="jwt-info">—</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PAGE 3: MESSAGING ============ -->
+<div id="page-messaging" class="page">
+  <h2 style="font-size:22px;margin-bottom:16px">✉️ Защищённые сообщения</h2>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h2>📤 Отправка сообщения</h2>
+      <div class="hint">
+        Для каждого сообщения генерируется уникальный AES-256-GCM ключ.
+        Этот ключ оборачивается (wrap) публичным RSA-ключом получателя.
+        Текст подписывается приватным RSA-ключом отправителя (SHA256withRSA).
+      </div>
+      <div class="steps" id="msg-steps">
+        <div class="step" id="ms1">1. AES-ключ</div>
+        <div class="step" id="ms2">2. GCM encrypt</div>
+        <div class="step" id="ms3">3. RSA wrap</div>
+        <div class="step" id="ms4">4. RSA sign</div>
+        <div class="step" id="ms5">5. Сохранение</div>
+      </div>
+      <div class="row">
+        <div class="field"><label>ID отправителя</label><input id="msg-from" placeholder="UUID"></div>
+        <div class="field"><label>ID получателя</label><input id="msg-to" placeholder="UUID"></div>
+      </div>
+      <div class="field" style="margin-bottom:12px">
+        <label>Текст сообщения</label>
+        <textarea id="msg-text" rows="2" placeholder="Привет! Это зашифрованное сообщение">Привет! Это защищённое сообщение 🔒</textarea>
+      </div>
+      <button class="btn btn-primary" onclick="doSendMessage()">📤 Отправить (E2E)</button>
+      <div id="msg-log" class="log" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <h2>📥 История и расшифровка</h2>
+      <div class="hint">
+        Получатель скачивает зашифрованные сообщения, разворачивает AES-ключ своим приватным RSA-ключом,
+        расшифровывает текст AES-GCM, проверяет RSA-подпись отправителя.
+      </div>
+      <div class="row">
+        <div class="field"><label>ID пользователя</label><input id="hist-user" placeholder="UUID"></div>
+        <button class="btn btn-secondary" onclick="doLoadHistory()" style="margin-top:auto">📥 Загрузить</button>
+      </div>
+      <div id="hist-log" class="log" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- Users list -->
+  <div class="card" style="margin-top:16px">
+    <h2>👥 Зарегистрированные пользователи</h2>
+    <div class="hint">Список пользователей из PostgreSQL. Используй UUID для отправки сообщений.</div>
+    <button class="btn btn-secondary" onclick="doLoadUsers()" style="margin-bottom:12px">🔄 Обновить список</button>
+    <table class="tbl">
+      <thead><tr><th>ID</th><th>Логин</th><th>Статус</th><th>Роль</th></tr></thead>
+      <tbody id="users-tbody"><tr><td colspan="4" style="color:var(--muted)">Нажми "Обновить список"</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============ PAGE 4: ENCRYPTION ============ -->
+<div id="page-encryption" class="page">
+  <h2 style="font-size:22px;margin-bottom:16px">🛡️ Сравнение методов шифрования</h2>
+
+  <div class="hint">
+    Тест шифрует и расшифровывает текст каждым из 7 алгоритмов, измеряет время и проверяет корректность.
+    AES-256-GCM — стандарт проекта. DES показан для демонстрации уязвимости.
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="row">
+      <div class="field" style="flex:3"><label>Текст для шифрования</label>
+        <input id="enc-text" value="Секретное сообщение для теста шифрования 🔐">
+      </div>
+      <button class="btn btn-primary" onclick="doEncryptionTest()" style="margin-top:auto">⚡ Запустить тест</button>
+    </div>
+  </div>
+
+  <div id="enc-results"></div>
+</div>
+
+<!-- ============ PAGE 5: AUDIT ============ -->
+<div id="page-audit" class="page">
+  <h2 style="font-size:22px;margin-bottom:16px">📊 Журнал аудита</h2>
+
+  <div class="hint">
+    Каждое действие записывается в таблицу audit_events в PostgreSQL:
+    регистрация, аутентификация, отправка сообщений, ошибки. Это обеспечивает
+    полную трассируемость и compliance.
+  </div>
+
+  <div class="card">
+    <button class="btn btn-secondary" onclick="doLoadAudit()" style="margin-bottom:12px">🔄 Загрузить журнал</button>
+    <table class="tbl">
+      <thead><tr><th>Время</th><th>Тип</th><th>Пользователь</th><th>Детали</th></tr></thead>
+      <tbody id="audit-tbody"><tr><td colspan="4" style="color:var(--muted)">Нажмите "Загрузить журнал"</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="demo.js"></script>
+</body>
+</html>

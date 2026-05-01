@@ -29,7 +29,7 @@ public class Message {
     @Column(name = "ratchet_step")
     private int ratchetStep;
 
-    @Column(nullable = false, length = 1024)
+    @Column(nullable = false, length = 2048)
     private String signature;
 
     @Column(name = "attachment_id")
