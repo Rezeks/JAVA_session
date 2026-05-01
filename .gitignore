@@ -1,2 +1,21 @@
-/target
-/target/classes
+# Build
+/target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Storage (runtime data)
+/storage/
+
+# Environment secrets (if used)
+.env
