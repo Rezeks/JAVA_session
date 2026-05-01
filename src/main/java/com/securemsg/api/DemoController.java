@@ -12,6 +12,8 @@ import com.securemsg.service.AuditService;
 import com.securemsg.service.FileTransferService;
 import com.securemsg.service.MessagingService;
 import com.securemsg.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -54,6 +56,8 @@ public class DemoController {
 
     // ============ USERS ============
 
+    @Operation(summary = "Список пользователей", description = "Возвращает всех зарегистрированных пользователей (без passwordHash)")
+    @Tag(name = "Users")
     @GetMapping("/users")
     public List<Map<String, Object>> listUsers() {
         return userRepository.findAll().stream().map(u -> {
@@ -67,6 +71,8 @@ public class DemoController {
         }).toList();
     }
 
+    @Operation(summary = "Регистрация", description = "Создаёт нового пользователя. Пароль хешируется PBKDF2-SHA256 (100K итераций)")
+    @Tag(name = "Users")
     @PostMapping("/users/register")
     public User register(@RequestBody RegisterRequest request) {
         Role role = request.role() == null ? Role.USER : request.role();
