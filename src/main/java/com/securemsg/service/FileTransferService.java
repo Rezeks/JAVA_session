@@ -2,6 +2,7 @@ package com.securemsg.service;
 
 import com.securemsg.domain.FileTransfer;
 import com.securemsg.domain.FileTransferStatus;
+import com.securemsg.repository.FileTransferRepository;
 import com.securemsg.security.CryptoService;
 import com.securemsg.security.KeyVault;
 
@@ -14,14 +15,12 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class FileTransferService {
     private static final long MAX_FILE_SIZE = 2L * 1024 * 1024 * 1024;
 
-    private final Map<UUID, FileTransfer> transfers = new ConcurrentHashMap<>();
+    private final FileTransferRepository fileTransferRepository;
     private final CryptoService cryptoService;
     private final KeyVault keyVault;
     private final MessagingService messagingService;
@@ -32,12 +31,14 @@ public class FileTransferService {
                                KeyVault keyVault,
                                MessagingService messagingService,
                                AuditService auditService,
-                               Path storageRoot) {
+                               Path storageRoot,
+                               FileTransferRepository fileTransferRepository) {
         this.cryptoService = cryptoService;
         this.keyVault = keyVault;
         this.messagingService = messagingService;
         this.auditService = auditService;
         this.storageRoot = storageRoot;
+        this.fileTransferRepository = fileTransferRepository;
     }
 
     public FileTransfer initiateUpload(UUID senderId, UUID recipientId, String fileName, long totalSize) {
@@ -57,7 +58,7 @@ public class FileTransferService {
                 FileTransferStatus.UPLOADING,
                 java.time.Instant.now(),
                 java.time.Instant.now());
-        transfers.put(transfer.id(), transfer);
+        fileTransferRepository.save(transfer);
         auditService.record("FILE_UPLOAD_INIT", senderId.toString(), "Transfer " + transferId + " started");
         return transfer;
     }
@@ -80,9 +81,9 @@ public class FileTransferService {
                     written += read;
                 }
                 long uploaded = Math.max(transfer.uploadedBytes(), offset + written);
-                FileTransfer updated = transfer.withUploadedBytes(uploaded);
-                transfers.put(transfer.id(), updated);
-                return updated;
+                transfer.withUploadedBytes(uploaded);
+                fileTransferRepository.save(transfer);
+                return transfer;
             }
         } catch (IOException e) {
             throw new IllegalStateException("Failed to upload chunk", e);
@@ -109,13 +110,13 @@ public class FileTransferService {
         }
 
         String checksum = checksumSha256(plainPath);
-        FileTransfer updated = transfer.withEncryptedPath(encryptedPath.toString(), checksum, FileTransferStatus.STORED);
-        transfers.put(transfer.id(), updated);
+        transfer.withEncryptedPath(encryptedPath.toString(), checksum, FileTransferStatus.STORED);
+        fileTransferRepository.save(transfer);
 
         String payload = "file:" + transfer.id() + ":" + transfer.originalFileName() + ":" + checksum;
         messagingService.sendFileNotification(transfer.senderId(), transfer.recipientId(), transfer.id(), payload);
         auditService.record("FILE_UPLOAD_FINALIZED", transfer.senderId().toString(), "Transfer " + transfer.id() + " finalized");
-        return updated;
+        return transfer;
     }
 
     public boolean verifyChecksum(UUID transferId, String expectedChecksum) {
@@ -125,16 +126,14 @@ public class FileTransferService {
 
     public void confirmDelivered(UUID transferId) {
         FileTransfer transfer = requireTransfer(transferId);
-        transfers.put(transfer.id(), transfer.withStatus(FileTransferStatus.DELIVERED));
+        transfer.withStatus(FileTransferStatus.DELIVERED);
+        fileTransferRepository.save(transfer);
         auditService.record("FILE_DELIVERED", transfer.recipientId().toString(), "Transfer " + transfer.id() + " delivered");
     }
 
     private FileTransfer requireTransfer(UUID transferId) {
-        FileTransfer transfer = transfers.get(transferId);
-        if (transfer == null) {
-            throw new IllegalArgumentException("Transfer not found");
-        }
-        return transfer;
+        return fileTransferRepository.findById(transferId)
+                .orElseThrow(() -> new IllegalArgumentException("Transfer not found"));
     }
 
     private Path plainUploadPath(UUID transferId) {
@@ -161,4 +160,3 @@ public class FileTransferService {
         }
     }
 }
-

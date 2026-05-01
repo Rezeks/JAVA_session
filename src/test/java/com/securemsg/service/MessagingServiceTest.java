@@ -2,6 +2,9 @@ package com.securemsg.service;
 
 import com.securemsg.domain.DeliveryStatus;
 import com.securemsg.domain.Message;
+import com.securemsg.repository.AuditEventRepository;
+import com.securemsg.repository.GroupChatRepository;
+import com.securemsg.repository.MessageRepository;
 import com.securemsg.security.CryptoService;
 import com.securemsg.security.InMemoryKeyVault;
 import org.junit.jupiter.api.Test;
@@ -15,10 +18,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MessagingServiceTest {
 
+    private MessagingService createMessagingService() {
+        AuditEventRepository auditRepo = new InMemoryAuditEventRepository();
+        AuditService audit = new AuditService(auditRepo);
+        MessageRepository messageRepo = new InMemoryMessageRepository();
+        GroupChatRepository groupRepo = new InMemoryGroupChatRepository();
+        return new MessagingService(new CryptoService(), new InMemoryKeyVault(), audit, messageRepo, groupRepo);
+    }
+
     @Test
     void shouldSendDecryptAndSyncMessages() {
-        AuditService audit = new AuditService();
-        MessagingService messagingService = new MessagingService(new CryptoService(), new InMemoryKeyVault(), audit);
+        MessagingService messagingService = createMessagingService();
         UUID alice = UUID.randomUUID();
         UUID bob = UUID.randomUUID();
 
@@ -36,8 +46,7 @@ class MessagingServiceTest {
 
     @Test
     void shouldSetErrorStatus() {
-        AuditService audit = new AuditService();
-        MessagingService messagingService = new MessagingService(new CryptoService(), new InMemoryKeyVault(), audit);
+        MessagingService messagingService = createMessagingService();
         UUID alice = UUID.randomUUID();
         UUID bob = UUID.randomUUID();
 
@@ -50,8 +59,7 @@ class MessagingServiceTest {
 
     @Test
     void shouldForbidDeleteByOtherUser() {
-        AuditService audit = new AuditService();
-        MessagingService messagingService = new MessagingService(new CryptoService(), new InMemoryKeyVault(), audit);
+        MessagingService messagingService = createMessagingService();
 
         UUID alice = UUID.randomUUID();
         UUID bob = UUID.randomUUID();

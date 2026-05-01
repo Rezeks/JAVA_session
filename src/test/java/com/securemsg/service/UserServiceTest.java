@@ -3,6 +3,8 @@ package com.securemsg.service;
 import com.securemsg.domain.Role;
 import com.securemsg.domain.User;
 import com.securemsg.domain.UserStatus;
+import com.securemsg.repository.AuditEventRepository;
+import com.securemsg.repository.UserRepository;
 import com.securemsg.security.InMemoryKeyVault;
 import org.junit.jupiter.api.Test;
 
@@ -12,10 +14,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class UserServiceTest {
 
+    private UserService createUserService() {
+        UserRepository userRepo = new InMemoryUserRepository();
+        AuditEventRepository auditRepo = new InMemoryAuditEventRepository();
+        AuditService audit = new AuditService(auditRepo);
+        return new UserService(audit, new InMemoryKeyVault(), userRepo);
+    }
+
     @Test
     void shouldAuthenticateWithTwoFactors() {
-        AuditService audit = new AuditService();
-        UserService users = new UserService(audit, new InMemoryKeyVault());
+        UserService users = createUserService();
         User user = users.register("alice", "password", Role.USER, "token123");
         users.confirm(user.login());
 
@@ -25,8 +33,7 @@ class UserServiceTest {
 
     @Test
     void shouldAutoBlockAfterTooManyFailedAttempts() {
-        AuditService audit = new AuditService();
-        UserService users = new UserService(audit, new InMemoryKeyVault());
+        UserService users = createUserService();
         User user = users.register("bob", "password", Role.USER, "token456");
         users.confirm(user.login());
 
@@ -40,8 +47,7 @@ class UserServiceTest {
 
     @Test
     void shouldRecoverAfterCompromise() {
-        AuditService audit = new AuditService();
-        UserService users = new UserService(audit, new InMemoryKeyVault());
+        UserService users = createUserService();
         User user = users.register("charlie", "password", Role.USER, "token001");
         users.confirm(user.login());
         users.block(user.login(), "incident");
@@ -52,4 +58,3 @@ class UserServiceTest {
         assertTrue(users.authenticate("charlie", "password", recovered.hardwareTokenSecret()));
     }
 }
-

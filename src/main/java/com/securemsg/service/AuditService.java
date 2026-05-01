@@ -1,20 +1,24 @@
 package com.securemsg.service;
 
 import com.securemsg.domain.AuditEvent;
+import com.securemsg.repository.AuditEventRepository;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public class AuditService {
-    private final CopyOnWriteArrayList<AuditEvent> events = new CopyOnWriteArrayList<>();
+    private final AuditEventRepository auditEventRepository;
+
+    public AuditService(AuditEventRepository auditEventRepository) {
+        this.auditEventRepository = auditEventRepository;
+    }
 
     public void record(String action, String actor, String details) {
-        events.add(new AuditEvent(UUID.randomUUID(), action, actor, details, Instant.now()));
+        auditEventRepository.save(new AuditEvent(UUID.randomUUID(), action, actor, details, Instant.now()));
     }
 
     public List<AuditEvent> allEvents() {
-        return List.copyOf(events);
+        return auditEventRepository.findAll();
     }
 }

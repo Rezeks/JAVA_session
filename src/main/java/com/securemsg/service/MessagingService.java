@@ -4,6 +4,8 @@ import com.securemsg.domain.DeliveryStatus;
 import com.securemsg.domain.GroupChat;
 import com.securemsg.domain.Message;
 import com.securemsg.domain.Role;
+import com.securemsg.repository.GroupChatRepository;
+import com.securemsg.repository.MessageRepository;
 import com.securemsg.security.CryptoService;
 import com.securemsg.security.KeyVault;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -22,9 +24,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MessagingService {
     private static final Duration KEY_ROTATION_INTERVAL = Duration.ofHours(1);
 
-    private final Map<UUID, Message> messages = new ConcurrentHashMap<>();
-    private final Map<UUID, GroupChat> groups = new ConcurrentHashMap<>();
-    private final Map<UUID, List<UUID>> offlineQueueByRecipient = new ConcurrentHashMap<>();
+    private final MessageRepository messageRepository;
+    private final GroupChatRepository groupChatRepository;
+    // keyRotation and ratchetStep are runtime state, kept in-memory
     private final Map<String, Instant> keyRotationByAlias = new ConcurrentHashMap<>();
     private final Map<String, Integer> ratchetStepByAlias = new ConcurrentHashMap<>();
     private final CryptoService cryptoService;
@@ -32,15 +34,20 @@ public class MessagingService {
     private final AuditService auditService;
     private final KafkaTemplate<String, String> kafkaTemplate;
 
-    public MessagingService(CryptoService cryptoService, KeyVault keyVault, AuditService auditService, KafkaTemplate<String, String> kafkaTemplate) {
+    public MessagingService(CryptoService cryptoService, KeyVault keyVault, AuditService auditService,
+                            KafkaTemplate<String, String> kafkaTemplate,
+                            MessageRepository messageRepository, GroupChatRepository groupChatRepository) {
         this.cryptoService = cryptoService;
         this.keyVault = keyVault;
         this.auditService = auditService;
         this.kafkaTemplate = kafkaTemplate;
+        this.messageRepository = messageRepository;
+        this.groupChatRepository = groupChatRepository;
     }
 
-    public MessagingService(CryptoService cryptoService, KeyVault keyVault, AuditService auditService) {
-        this(cryptoService, keyVault, auditService, null);
+    public MessagingService(CryptoService cryptoService, KeyVault keyVault, AuditService auditService,
+                            MessageRepository messageRepository, GroupChatRepository groupChatRepository) {
+        this(cryptoService, keyVault, auditService, null, messageRepository, groupChatRepository);
     }
 
     public Message send(UUID senderId, UUID recipientId, String plainText) {
@@ -60,8 +67,7 @@ public class MessagingService {
                 wrappedMessageKey, ratchetStep, signature, null,
                 DeliveryStatus.QUEUED, Instant.now(), Instant.now());
 
-        messages.put(message.id(), message);
-        queueOffline(message);
+        messageRepository.save(message);
         auditService.record("MESSAGE_SENT", senderId.toString(), "Message " + message.id() + " to " + recipientId);
         publishEvent("message.sent", message.id().toString());
         return message;
@@ -71,7 +77,7 @@ public class MessagingService {
         Set<UUID> allMembers = new HashSet<>(members);
         allMembers.add(ownerId);
         GroupChat group = new GroupChat(UUID.randomUUID(), name, ownerId, Set.copyOf(allMembers), Instant.now(), Instant.now(), Instant.now());
-        groups.put(group.id(), group);
+        groupChatRepository.save(group);
         keyVault.getOrCreateEncryptionKey(groupKeyAlias(group.id()));
         auditService.record("GROUP_CREATED", ownerId.toString(), "Group " + group.id() + " name=" + name);
         return group;
@@ -101,8 +107,7 @@ public class MessagingService {
             Message message = new Message(UUID.randomUUID(), senderId, memberId, groupId, encrypted,
                     wrappedMessageKey, ratchetStep, signature, null,
                     DeliveryStatus.QUEUED, Instant.now(), Instant.now());
-            messages.put(message.id(), message);
-            queueOffline(message);
+            messageRepository.save(message);
             created.add(message);
         }
         auditService.record("GROUP_MESSAGE_SENT", senderId.toString(), "Group " + groupId + ", fanout=" + created.size());
@@ -112,9 +117,9 @@ public class MessagingService {
 
     public void confirmDelivery(UUID messageId) {
         Message existing = requireMessage(messageId);
-        Message delivered = existing.withStatus(DeliveryStatus.DELIVERED);
-        messages.put(messageId, delivered);
-        auditService.record("MESSAGE_DELIVERED", delivered.recipientId().toString(), "Message " + messageId + " delivered");
+        existing.withStatus(DeliveryStatus.DELIVERED);
+        messageRepository.save(existing);
+        auditService.record("MESSAGE_DELIVERED", existing.recipientId().toString(), "Message " + messageId + " delivered");
         publishEvent("message.delivered", messageId.toString());
     }
 
@@ -123,13 +128,15 @@ public class MessagingService {
         if (!existing.recipientId().equals(readerId)) {
             throw new SecurityException("Only recipient can mark message as read");
         }
-        messages.put(messageId, existing.withStatus(DeliveryStatus.READ));
+        existing.withStatus(DeliveryStatus.READ);
+        messageRepository.save(existing);
         auditService.record("MESSAGE_READ", readerId.toString(), "Message " + messageId + " read");
     }
 
     public void markError(UUID messageId, String reason) {
         Message existing = requireMessage(messageId);
-        messages.put(messageId, existing.withStatus(DeliveryStatus.ERROR));
+        existing.withStatus(DeliveryStatus.ERROR);
+        messageRepository.save(existing);
         auditService.record("MESSAGE_ERROR", existing.recipientId().toString(), "Message " + messageId + " error=" + reason);
         publishEvent("message.error", messageId + ":" + reason);
     }
@@ -145,32 +152,25 @@ public class MessagingService {
         if (!ownsMessage && !privileged) {
             throw new SecurityException("User has no rights to delete this message");
         }
-        messages.put(messageId, existing.withStatus(DeliveryStatus.DELETED));
+        existing.withStatus(DeliveryStatus.DELETED);
+        messageRepository.save(existing);
         auditService.record("MESSAGE_DELETED", requesterId.toString(), "Message " + messageId + " deleted");
     }
 
     public List<Message> syncHistory(UUID userId) {
-        List<Message> history = new ArrayList<>();
-        for (Message message : messages.values()) {
-            if (message.senderId().equals(userId) || message.recipientId().equals(userId)) {
-                history.add(message);
-            }
-        }
+        List<Message> history = messageRepository.findBySenderIdOrRecipientId(userId, userId);
         auditService.record("HISTORY_SYNC", userId.toString(), "History sync size=" + history.size());
         return history;
     }
 
     public List<Message> pullOfflineMessages(UUID userId) {
-        List<UUID> queued = offlineQueueByRecipient.getOrDefault(userId, List.of());
+        List<Message> queued = messageRepository.findByRecipientIdAndStatus(userId, DeliveryStatus.QUEUED);
         List<Message> pulled = new ArrayList<>();
-        for (UUID messageId : queued) {
-            Message msg = messages.get(messageId);
-            if (msg != null && msg.status() == DeliveryStatus.QUEUED) {
-                messages.put(msg.id(), msg.withStatus(DeliveryStatus.SENT));
-                pulled.add(messages.get(msg.id()));
-            }
+        for (Message msg : queued) {
+            msg.withStatus(DeliveryStatus.SENT);
+            messageRepository.save(msg);
+            pulled.add(msg);
         }
-        offlineQueueByRecipient.put(userId, new ArrayList<>());
         auditService.record("OFFLINE_QUEUE_PULL", userId.toString(), "Pulled=" + pulled.size());
         return pulled;
     }
@@ -212,23 +212,15 @@ public class MessagingService {
         Message message = new Message(UUID.randomUUID(), senderId, recipientId, null, encryptedPayload,
                 wrappedMessageKey, ratchetStep, signature, transferId,
                 DeliveryStatus.QUEUED, Instant.now(), Instant.now());
-        messages.put(message.id(), message);
-        queueOffline(message);
+        messageRepository.save(message);
         auditService.record("FILE_NOTIFICATION_SENT", senderId.toString(), "Transfer " + transferId + " -> " + recipientId);
         publishEvent("file.notification.sent", transferId.toString());
         return message;
     }
 
     private GroupChat requireGroup(UUID groupId) {
-        GroupChat group = groups.get(groupId);
-        if (group == null) {
-            throw new IllegalArgumentException("Group not found");
-        }
-        return group;
-    }
-
-    private void queueOffline(Message message) {
-        offlineQueueByRecipient.computeIfAbsent(message.recipientId(), ignored -> new ArrayList<>()).add(message.id());
+        return groupChatRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("Group not found"));
     }
 
     private String groupKeyAlias(UUID groupId) {
@@ -252,10 +244,7 @@ public class MessagingService {
     }
 
     private Message requireMessage(UUID messageId) {
-        Message message = messages.get(messageId);
-        if (message == null) {
-            throw new IllegalArgumentException("Message not found");
-        }
-        return message;
+        return messageRepository.findById(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("Message not found"));
     }
 }

@@ -1,5 +1,10 @@
 package com.securemsg;
 
+import com.securemsg.repository.AuditEventRepository;
+import com.securemsg.repository.FileTransferRepository;
+import com.securemsg.repository.GroupChatRepository;
+import com.securemsg.repository.MessageRepository;
+import com.securemsg.repository.UserRepository;
 import com.securemsg.security.InMemoryKeyVault;
 import com.securemsg.security.KeyVault;
 import com.securemsg.service.AuditService;
@@ -34,8 +39,8 @@ public class Application {
     }
 
     @Bean
-    public AuditService auditService() {
-        return new AuditService();
+    public AuditService auditService(AuditEventRepository auditEventRepository) {
+        return new AuditService(auditEventRepository);
     }
 
     @Bean
@@ -49,24 +54,29 @@ public class Application {
     }
 
     @Bean
-    public UserService userService(AuditService auditService, KeyVault keyVault) {
-        return new UserService(auditService, keyVault);
+    public UserService userService(AuditService auditService, KeyVault keyVault, UserRepository userRepository) {
+        return new UserService(auditService, keyVault, userRepository);
     }
 
     @Bean
     public MessagingService messagingService(CryptoService cryptoService,
                                              KeyVault keyVault,
                                              AuditService auditService,
-                                             ObjectProvider<KafkaTemplate<String, String>> kafkaTemplateProvider) {
-        return new MessagingService(cryptoService, keyVault, auditService, kafkaTemplateProvider.getIfAvailable());
+                                             ObjectProvider<KafkaTemplate<String, String>> kafkaTemplateProvider,
+                                             MessageRepository messageRepository,
+                                             GroupChatRepository groupChatRepository) {
+        return new MessagingService(cryptoService, keyVault, auditService,
+                kafkaTemplateProvider.getIfAvailable(), messageRepository, groupChatRepository);
     }
 
     @Bean
     public FileTransferService fileTransferService(CryptoService cryptoService,
                                                    KeyVault keyVault,
                                                    MessagingService messagingService,
-                                                   AuditService auditService) {
-        return new FileTransferService(cryptoService, keyVault, messagingService, auditService, Path.of("storage"));
+                                                   AuditService auditService,
+                                                   FileTransferRepository fileTransferRepository) {
+        return new FileTransferService(cryptoService, keyVault, messagingService, auditService,
+                Path.of("storage"), fileTransferRepository);
     }
 
     @Bean
