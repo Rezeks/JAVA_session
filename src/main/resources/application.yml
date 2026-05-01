@@ -33,4 +33,33 @@ securemsg:
     consumer-enabled: true
   encryption:
     default-method: AES_256_GCM
+  jwt:
+    secret: SecureMessagingSystemJwtSecretKey2026!
+    expiration-ms: 3600000  # 1 hour
 
+# Swagger / OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: method
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+info:
+  app:
+    name: Secure Messaging System
+    version: 1.0.0
+    description: Защищённая система обмена сообщениями
