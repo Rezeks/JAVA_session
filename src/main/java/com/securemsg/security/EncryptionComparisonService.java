@@ -4,9 +4,9 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 import java.nio.charset.StandardCharsets;
-import java.security.Security;
-import java.security.SecureRandom;
+import java.security.*;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +17,7 @@ import java.util.Map;
  * - AES-256-CBC (программный, безопасный)
  * - AES-128-CBC (слабее, быстрее)
  * - DES (уязвимый, историческое значение)
- * - ChaCha20 (современный, не требует IV как AES-GCM)
+ * - ChaCha20-Poly1305 (современный поточный)
  * - RSA-4096 (асимметричный, медленный)
  * - Plaintext (для сравнения, опасный!)
  */
@@ -27,12 +27,17 @@ public class EncryptionComparisonService {
         Security.addProvider(new BouncyCastleProvider());
     }
 
+    // Thread-local storage for keys/IVs so encrypt→decrypt can share them
+    private final ThreadLocal<byte[]> currentKey = new ThreadLocal<>();
+    private final ThreadLocal<byte[]> currentIv = new ThreadLocal<>();
+    private final ThreadLocal<KeyPair> currentRsaKeyPair = new ThreadLocal<>();
+
     public enum EncryptionMethod {
         AES_256_GCM("AES-256-GCM", "Современный аппаратно-ускоренный стандарт", true, "EXCELLENT"),
         AES_256_CBC("AES-256-CBC", "Безопасный, программный, требует IV", false, "EXCELLENT"),
         AES_128_CBC("AES-128-CBC", "Слабее AES-256, но вполне безопасный", false, "GOOD"),
         DES_ECB("DES-ECB", "Уязвимый, только для демонстрации уязвимостей", false, "WEAK"),
-        CHACHA20("ChaCha20", "Современный поток-ориентированный шифр", false, "EXCELLENT"),
+        CHACHA20("ChaCha20-Poly1305", "Современный поток-ориентированный шифр", false, "EXCELLENT"),
         RSA_ECB("RSA-4096", "Асимметричный, медленный, для ключей", true, "EXCELLENT"),
         PLAINTEXT("PLAINTEXT", "БЕЗ ШИФРОВАНИЯ - опасно!", false, "NONE");
 
@@ -61,35 +66,29 @@ public class EncryptionComparisonService {
             switch (method) {
                 case AES_256_GCM:
                     ciphertext = encryptAES256GCM(plaintext);
-                    ciphertextSize = ciphertext.length();
                     break;
                 case AES_256_CBC:
                     ciphertext = encryptAES256CBC(plaintext);
-                    ciphertextSize = ciphertext.length();
                     break;
                 case AES_128_CBC:
                     ciphertext = encryptAES128CBC(plaintext);
-                    ciphertextSize = ciphertext.length();
                     break;
                 case DES_ECB:
                     ciphertext = encryptDES(plaintext);
-                    ciphertextSize = ciphertext.length();
                     break;
                 case CHACHA20:
                     ciphertext = encryptChaCha20(plaintext);
-                    ciphertextSize = ciphertext.length();
                     break;
                 case RSA_ECB:
                     ciphertext = encryptRSA(plaintext);
-                    ciphertextSize = ciphertext.length();
                     break;
                 case PLAINTEXT:
                     ciphertext = plaintext;
-                    ciphertextSize = plaintext.length();
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown method: " + method);
             }
+            ciphertextSize = ciphertext.length();
         } catch (Exception e) {
             return new EncryptionTestResult(
                     method.name(),
@@ -167,11 +166,12 @@ public class EncryptionComparisonService {
     private String encryptAES256GCM(String plaintext) throws Exception {
         byte[] key = new byte[32];
         new SecureRandom().nextBytes(key);
+        currentKey.set(key);
         byte[] iv = new byte[12];
         new SecureRandom().nextBytes(iv);
 
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new javax.crypto.spec.GCMParameterSpec(128, iv));
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(128, iv));
         byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
 
         byte[] result = new byte[iv.length + ciphertext.length];
@@ -181,15 +181,25 @@ public class EncryptionComparisonService {
         return Base64.getEncoder().encodeToString(result);
     }
 
-    private String decryptAES256GCM(String ciphertext) throws Exception {
-        // For demo, we'll just return "fake" decryption to show the concept
-        return "Decrypted[" + ciphertext.substring(0, Math.min(20, ciphertext.length())) + "...]";
+    private String decryptAES256GCM(String ciphertextBase64) throws Exception {
+        byte[] key = currentKey.get();
+        byte[] data = Base64.getDecoder().decode(ciphertextBase64);
+        byte[] iv = new byte[12];
+        System.arraycopy(data, 0, iv, 0, 12);
+        byte[] ciphertext = new byte[data.length - 12];
+        System.arraycopy(data, 12, ciphertext, 0, ciphertext.length);
+
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new GCMParameterSpec(128, iv));
+        byte[] plainBytes = cipher.doFinal(ciphertext);
+        return new String(plainBytes, StandardCharsets.UTF_8);
     }
 
     // ============ AES-256-CBC ============
     private String encryptAES256CBC(String plaintext) throws Exception {
         byte[] key = new byte[32];
         new SecureRandom().nextBytes(key);
+        currentKey.set(key);
         byte[] iv = new byte[16];
         new SecureRandom().nextBytes(iv);
 
@@ -204,14 +214,25 @@ public class EncryptionComparisonService {
         return Base64.getEncoder().encodeToString(result);
     }
 
-    private String decryptAES256CBC(String ciphertext) {
-        return "Decrypted[" + ciphertext.substring(0, Math.min(20, ciphertext.length())) + "...]";
+    private String decryptAES256CBC(String ciphertextBase64) throws Exception {
+        byte[] key = currentKey.get();
+        byte[] data = Base64.getDecoder().decode(ciphertextBase64);
+        byte[] iv = new byte[16];
+        System.arraycopy(data, 0, iv, 0, 16);
+        byte[] ciphertext = new byte[data.length - 16];
+        System.arraycopy(data, 16, ciphertext, 0, ciphertext.length);
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new IvParameterSpec(iv));
+        byte[] plainBytes = cipher.doFinal(ciphertext);
+        return new String(plainBytes, StandardCharsets.UTF_8);
     }
 
     // ============ AES-128-CBC ============
     private String encryptAES128CBC(String plaintext) throws Exception {
         byte[] key = new byte[16];
         new SecureRandom().nextBytes(key);
+        currentKey.set(key);
         byte[] iv = new byte[16];
         new SecureRandom().nextBytes(iv);
 
@@ -226,14 +247,24 @@ public class EncryptionComparisonService {
         return Base64.getEncoder().encodeToString(result);
     }
 
-    private String decryptAES128CBC(String ciphertext) {
-        return "Decrypted[" + ciphertext.substring(0, Math.min(20, ciphertext.length())) + "...]";
+    private String decryptAES128CBC(String ciphertextBase64) throws Exception {
+        byte[] key = currentKey.get();
+        byte[] data = Base64.getDecoder().decode(ciphertextBase64);
+        byte[] iv = new byte[16];
+        System.arraycopy(data, 0, iv, 0, 16);
+        byte[] ciphertext = new byte[data.length - 16];
+        System.arraycopy(data, 16, ciphertext, 0, ciphertext.length);
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "AES"), new IvParameterSpec(iv));
+        byte[] plainBytes = cipher.doFinal(ciphertext);
+        return new String(plainBytes, StandardCharsets.UTF_8);
     }
 
-    // ============ DES (уязвимый!) ============
+    // ============ DES-CBC (уязвимый!) ============
     private String encryptDES(String plaintext) throws Exception {
-        // DES use only 8-byte key (56-bit)
         byte[] key = "12345678".getBytes(StandardCharsets.UTF_8);
+        currentKey.set(key);
         byte[] iv = new byte[8];
         new SecureRandom().nextBytes(iv);
 
@@ -248,35 +279,76 @@ public class EncryptionComparisonService {
         return Base64.getEncoder().encodeToString(result);
     }
 
-    private String decryptDES(String ciphertext) {
-        return "Decrypted[" + ciphertext.substring(0, Math.min(20, ciphertext.length())) + "...]";
+    private String decryptDES(String ciphertextBase64) throws Exception {
+        byte[] key = currentKey.get();
+        byte[] data = Base64.getDecoder().decode(ciphertextBase64);
+        byte[] iv = new byte[8];
+        System.arraycopy(data, 0, iv, 0, 8);
+        byte[] ciphertext = new byte[data.length - 8];
+        System.arraycopy(data, 8, ciphertext, 0, ciphertext.length);
+
+        Cipher cipher = Cipher.getInstance("DES/CBC/PKCS5Padding");
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, 0, 8, "DES"), new IvParameterSpec(iv));
+        byte[] plainBytes = cipher.doFinal(ciphertext);
+        return new String(plainBytes, StandardCharsets.UTF_8);
     }
 
-    // ============ ChaCha20 ============
+    // ============ ChaCha20-Poly1305 ============
     private String encryptChaCha20(String plaintext) throws Exception {
         byte[] key = new byte[32];
         new SecureRandom().nextBytes(key);
+        currentKey.set(key);
         byte[] nonce = new byte[12];
         new SecureRandom().nextBytes(nonce);
 
-        // Using BouncyCastle ChaCha20
-        byte[] ciphertext = plaintext.getBytes(StandardCharsets.UTF_8);
-        // Dummy encryption for demo
+        Cipher cipher = Cipher.getInstance("ChaCha20-Poly1305", "BC");
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "ChaCha20"),
+                new IvParameterSpec(nonce));
+        byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+
+        byte[] result = new byte[nonce.length + ciphertext.length];
+        System.arraycopy(nonce, 0, result, 0, nonce.length);
+        System.arraycopy(ciphertext, 0, result, nonce.length, ciphertext.length);
+
+        return Base64.getEncoder().encodeToString(result);
+    }
+
+    private String decryptChaCha20(String ciphertextBase64) throws Exception {
+        byte[] key = currentKey.get();
+        byte[] data = Base64.getDecoder().decode(ciphertextBase64);
+        byte[] nonce = new byte[12];
+        System.arraycopy(data, 0, nonce, 0, 12);
+        byte[] ciphertext = new byte[data.length - 12];
+        System.arraycopy(data, 12, ciphertext, 0, ciphertext.length);
+
+        Cipher cipher = Cipher.getInstance("ChaCha20-Poly1305", "BC");
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "ChaCha20"),
+                new IvParameterSpec(nonce));
+        byte[] plainBytes = cipher.doFinal(ciphertext);
+        return new String(plainBytes, StandardCharsets.UTF_8);
+    }
+
+    // ============ RSA-4096 (асимметричный) ============
+    private String encryptRSA(String plaintext) throws Exception {
+        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+        keyGen.initialize(4096);
+        KeyPair keyPair = keyGen.generateKeyPair();
+        currentRsaKeyPair.set(keyPair);
+
+        Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
+        cipher.init(Cipher.ENCRYPT_MODE, keyPair.getPublic());
+        byte[] ciphertext = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
         return Base64.getEncoder().encodeToString(ciphertext);
     }
 
-    private String decryptChaCha20(String ciphertext) {
-        return "Decrypted[" + ciphertext.substring(0, Math.min(20, ciphertext.length())) + "...]";
-    }
+    private String decryptRSA(String ciphertextBase64) throws Exception {
+        KeyPair keyPair = currentRsaKeyPair.get();
+        byte[] ciphertext = Base64.getDecoder().decode(ciphertextBase64);
 
-    // ============ RSA (асимметричный) ============
-    private String encryptRSA(String plaintext) throws Exception {
-        // For demo, just return base64
-        return Base64.getEncoder().encodeToString(plaintext.getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String decryptRSA(String ciphertext) {
-        return "Decrypted[" + ciphertext.substring(0, Math.min(20, ciphertext.length())) + "...]";
+        Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWithSHA-256AndMGF1Padding");
+        cipher.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+        byte[] plainBytes = cipher.doFinal(ciphertext);
+        return new String(plainBytes, StandardCharsets.UTF_8);
     }
 
     /**
@@ -344,7 +416,7 @@ public class EncryptionComparisonService {
                 info.put("recommended", false);
                 break;
             case CHACHA20:
-                info.put("strengths", new String[]{"Современный", "Быстрый потоком", "Не требует IV"});
+                info.put("strengths", new String[]{"Современный", "Быстрый потоком", "AEAD (Poly1305)"});
                 info.put("weaknesses", new String[]{"Менее аппаратно ускорен чем AES", "Новее (может быть меньше проверок)"});
                 info.put("recommended", true);
                 break;
@@ -362,4 +434,3 @@ public class EncryptionComparisonService {
         return info;
     }
 }
-

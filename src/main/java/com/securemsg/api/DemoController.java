@@ -6,6 +6,7 @@ import com.securemsg.domain.Message;
 import com.securemsg.domain.Role;
 import com.securemsg.domain.User;
 import com.securemsg.domain.AuditEvent;
+import com.securemsg.repository.UserRepository;
 import com.securemsg.security.KeyVault;
 import com.securemsg.service.AuditService;
 import com.securemsg.service.FileTransferService;
@@ -21,7 +22,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.ByteArrayInputStream;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -33,17 +36,35 @@ public class DemoController {
     private final FileTransferService fileTransferService;
     private final KeyVault keyVault;
     private final AuditService auditService;
+    private final UserRepository userRepository;
 
     public DemoController(UserService userService,
                           MessagingService messagingService,
                           FileTransferService fileTransferService,
                           KeyVault keyVault,
-                          AuditService auditService) {
+                          AuditService auditService,
+                          UserRepository userRepository) {
         this.userService = userService;
         this.messagingService = messagingService;
         this.fileTransferService = fileTransferService;
         this.keyVault = keyVault;
         this.auditService = auditService;
+        this.userRepository = userRepository;
+    }
+
+    // ============ USERS ============
+
+    @GetMapping("/users")
+    public List<Map<String, Object>> listUsers() {
+        return userRepository.findAll().stream().map(u -> {
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("id", u.id());
+            dto.put("login", u.login());
+            dto.put("status", u.status());
+            dto.put("role", u.role());
+            dto.put("createdAt", u.createdAt());
+            return dto;
+        }).toList();
     }
 
     @PostMapping("/users/register")
@@ -171,6 +192,29 @@ public class DemoController {
     public void importKeys(@PathVariable String ownerId, @RequestBody ImportKeyRequest request) {
         keyVault.importSigningKeyPair(ownerId, request.publicKey(), request.privateKey());
     }
+
+    // ============ MESSAGES: DECRYPT & DELETE ============
+
+    @PostMapping("/messages/{messageId}/decrypt")
+    public Map<String, String> decryptMessage(@PathVariable UUID messageId, @RequestParam UUID recipientId) {
+        Message message = messagingService.syncHistory(recipientId).stream()
+                .filter(m -> m.id().equals(messageId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Message not found"));
+        String plaintext = messagingService.decryptForRecipient(message, recipientId);
+        Map<String, String> result = new HashMap<>();
+        result.put("messageId", messageId.toString());
+        result.put("plaintext", plaintext);
+        result.put("verified", "true");
+        return result;
+    }
+
+    @PostMapping("/messages/{messageId}/delete")
+    public void deleteMessage(@PathVariable UUID messageId, @RequestParam UUID requesterId) {
+        messagingService.deleteMessage(messageId, requesterId);
+    }
+
+    // ============ AUDIT ============
 
     @GetMapping("/audit")
     public List<AuditEvent> audit() {
