@@ -89,7 +89,8 @@ public class Message {
     public int getRatchetStep() { return ratchetStep; }
     public String getSignature() { return signature; }
     public UUID getAttachmentId() { return attachmentId; }
-    public DeliveryStatus getDeliveryStatus() { return status; }
+    public DeliveryStatus getStatus() { return status; }
+    public String getCiphertextBase64() { return encryptedPayload; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 

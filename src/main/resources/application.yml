@@ -25,6 +25,12 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      retries: 0  # не ждать — Kafka опциональна
+      properties:
+        request.timeout.ms: 3000      # быстрый таймаут (3 сек)
+        max.block.ms: 3000            # не блокировать надолго
+    listener:
+      missing-topics-fatal: false     # не падать если топик не существует
 server:
   port: 8080
 
