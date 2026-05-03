@@ -10,6 +10,7 @@ import com.securemsg.security.CryptoService;
 import com.securemsg.security.KeyVault;
 import org.springframework.kafka.core.KafkaTemplate;
 
+import org.springframework.lang.NonNull;
 import java.security.KeyPair;
 import java.time.Duration;
 import java.time.Instant;
@@ -58,7 +59,7 @@ public class MessagingService {
         String wrappedMessageKey = cryptoService.wrapKey(
                 oneTimeMessageKey,
                 keyVault.getOrCreateSigningKeyPair(recipientId.toString()).getPublic());
-        int ratchetStep = ratchetStepByAlias.merge(keyAlias, 1, Integer::sum);
+        int ratchetStep = ratchetStepByAlias.merge(keyAlias, 1, (v1, v2) -> v1 + v2);
 
         KeyPair signerKeys = keyVault.getOrCreateSigningKeyPair(senderId.toString());
         String signature = cryptoService.sign(encrypted, signerKeys.getPrivate());
@@ -92,7 +93,7 @@ public class MessagingService {
         rotateKeyIfNeeded(alias);
         byte[] oneTimeGroupKey = CryptoService.generateRandomBytes(32);
         String encrypted = cryptoService.encrypt(plainText, oneTimeGroupKey);
-        int ratchetStep = ratchetStepByAlias.merge(alias, 1, Integer::sum);
+        int ratchetStep = ratchetStepByAlias.merge(alias, 1, (v1, v2) -> v1 + v2);
         KeyPair signerKeys = keyVault.getOrCreateSigningKeyPair(senderId.toString());
         String signature = cryptoService.sign(encrypted, signerKeys.getPrivate());
 
@@ -206,7 +207,7 @@ public class MessagingService {
         String wrappedMessageKey = cryptoService.wrapKey(
                 oneTimeMessageKey,
                 keyVault.getOrCreateSigningKeyPair(recipientId.toString()).getPublic());
-        int ratchetStep = ratchetStepByAlias.merge(recipientId.toString(), 1, Integer::sum);
+        int ratchetStep = ratchetStepByAlias.merge(recipientId.toString(), 1, (v1, v2) -> v1 + v2);
         KeyPair signerKeys = keyVault.getOrCreateSigningKeyPair(senderId.toString());
         String signature = cryptoService.sign(encryptedPayload, signerKeys.getPrivate());
         Message message = new Message(UUID.randomUUID(), senderId, recipientId, null, encryptedPayload,
@@ -218,7 +219,8 @@ public class MessagingService {
         return message;
     }
 
-    private GroupChat requireGroup(UUID groupId) {
+    @NonNull
+    private GroupChat requireGroup(@NonNull UUID groupId) {
         return groupChatRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("Group not found"));
     }
@@ -249,7 +251,8 @@ public class MessagingService {
         }
     }
 
-    private Message requireMessage(UUID messageId) {
+    @NonNull
+    private Message requireMessage(@NonNull UUID messageId) {
         return messageRepository.findById(messageId)
                 .orElseThrow(() -> new IllegalArgumentException("Message not found"));
     }

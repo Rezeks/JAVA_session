@@ -29,7 +29,6 @@ public class EncryptionComparisonService {
 
     // Thread-local storage for keys/IVs so encrypt→decrypt can share them
     private final ThreadLocal<byte[]> currentKey = new ThreadLocal<>();
-    private final ThreadLocal<byte[]> currentIv = new ThreadLocal<>();
     private final ThreadLocal<KeyPair> currentRsaKeyPair = new ThreadLocal<>();
 
     public enum EncryptionMethod {

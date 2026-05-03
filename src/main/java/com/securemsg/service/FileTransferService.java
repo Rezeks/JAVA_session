@@ -6,6 +6,7 @@ import com.securemsg.repository.FileTransferRepository;
 import com.securemsg.security.CryptoService;
 import com.securemsg.security.KeyVault;
 
+import org.springframework.lang.NonNull;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -131,7 +132,8 @@ public class FileTransferService {
         auditService.record("FILE_DELIVERED", transfer.recipientId().toString(), "Transfer " + transfer.id() + " delivered");
     }
 
-    private FileTransfer requireTransfer(UUID transferId) {
+    @NonNull
+    private FileTransfer requireTransfer(@NonNull UUID transferId) {
         return fileTransferRepository.findById(transferId)
                 .orElseThrow(() -> new IllegalArgumentException("Transfer not found"));
     }
