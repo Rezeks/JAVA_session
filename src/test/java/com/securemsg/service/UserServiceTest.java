@@ -19,7 +19,7 @@ class UserServiceTest {
         UserRepository userRepo = new InMemoryUserRepository();
         AuditEventRepository auditRepo = new InMemoryAuditEventRepository();
         AuditService audit = new AuditService(auditRepo);
-        return new UserService(audit, new InMemoryKeyVault(), userRepo);
+        return new UserService(audit, new InMemoryKeyVault(), userRepo, new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder());
     }
 
     @Test

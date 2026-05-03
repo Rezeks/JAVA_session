@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Messenger</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="app.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="screen active">
+        <div class="glass-panel login-box">
+            <div class="logo">💬</div>
+            <h2>Добро пожаловать</h2>
+            <p>Войдите в свой защищенный аккаунт</p>
+            <div class="input-group">
+                <input type="text" id="login-username" placeholder="Логин" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <input type="password" id="login-password" placeholder="Пароль">
+            </div>
+            <button class="btn-primary" onclick="app.login()">Войти</button>
+            <div class="auth-switch">Нет аккаунта? <a href="#" onclick="app.toggleScreen('register-screen')">Создать аккаунт</a></div>
+        </div>
+    </div>
+
+    <!-- Register Screen -->
+    <div id="register-screen" class="screen">
+        <div class="glass-panel login-box">
+            <div class="logo">🔐</div>
+            <h2>Создать аккаунт</h2>
+            <p>Регистрация в Secure Messenger</p>
+            <div class="input-group">
+                <input type="text" id="reg-username" placeholder="Придумайте логин" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <input type="password" id="reg-password" placeholder="Придумайте пароль">
+            </div>
+            <div class="input-group">
+                <select id="reg-role" class="styled-select">
+                    <option value="USER">Пользователь (USER)</option>
+                    <option value="ADMIN">Администратор (ADMIN)</option>
+                </select>
+            </div>
+            <button class="btn-primary" onclick="app.register()">Зарегистрироваться</button>
+            <div class="auth-switch">Уже есть аккаунт? <a href="#" onclick="app.toggleScreen('login-screen')">Войти</a></div>
+        </div>
+    </div>
+
+    <!-- Main Chat Screen -->
+    <div id="chat-screen" class="screen">
+        <div class="app-container glass-panel">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <div class="user-profile">
+                        <div class="avatar" id="current-user-avatar">U</div>
+                        <div class="user-info">
+                            <span class="user-name" id="current-user-name">User</span>
+                            <span class="status">В сети (Защищено)</span>
+                        </div>
+                    </div>
+                    <button id="admin-dashboard-btn" class="btn-secondary" style="display: none; margin-top: 1rem; width: 100%;" onclick="window.open('/ui/demo.html', '_blank')">
+                        📊 Открыть Dashboard
+                    </button>
+                </div>
+                <div class="search-bar">
+                    <input type="text" placeholder="Поиск контактов..." onkeyup="app.filterContacts(this.value)">
+                </div>
+                <div class="contact-list" id="contact-list">
+                    <!-- Contacts injected by JS -->
+                </div>
+            </div>
+
+            <!-- Chat Area -->
+            <div class="chat-area">
+                <div class="chat-header">
+                    <div class="active-contact" id="active-contact-header">
+                        Выберите контакт
+                    </div>
+                    <div class="crypto-badge" title="Все сообщения шифруются E2E">🔒 End-to-End Encrypted</div>
+                </div>
+                <div class="message-list" id="message-list">
+                    <!-- Messages injected by JS -->
+                    <div class="empty-state">Нет активного чата</div>
+                </div>
+                <div class="message-input-area">
+                    <input type="text" id="message-input" placeholder="Написать защищенное сообщение..." onkeypress="app.handleKeyPress(event)" disabled>
+                    <button class="btn-send" onclick="app.sendMessage()" id="btn-send" disabled>
+                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
