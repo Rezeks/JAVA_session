@@ -48,6 +48,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/encryption/**").permitAll()
                         .requestMatchers("/api/bot-id").permitAll()
                         .requestMatchers("/api/users").permitAll()
+                        .requestMatchers("/api/users/**").permitAll()
+                        .requestMatchers("/api/audit").permitAll()
+                        .requestMatchers("/api/messages/**").permitAll()
 
                         // Admin-only endpoints
                         .requestMatchers(HttpMethod.POST, "/api/users/*/block").hasRole("ADMIN")
