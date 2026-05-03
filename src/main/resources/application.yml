@@ -69,3 +69,9 @@ info:
     name: Secure Messaging System
     version: 1.0.0
     description: Защищённая система обмена сообщениями
+
+ai:
+  provider: gemini
+  api-key: ${AI_API_KEY:demo-key}
+  model: gemini-1.5-flash
+  url: https://generativelanguage.googleapis.com/v1beta/models/

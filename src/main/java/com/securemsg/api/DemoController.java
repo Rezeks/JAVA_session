@@ -39,19 +39,22 @@ public class DemoController {
     private final KeyVault keyVault;
     private final AuditService auditService;
     private final UserRepository userRepository;
+    private final com.securemsg.service.AiBotService aiBotService;
 
     public DemoController(UserService userService,
                           MessagingService messagingService,
                           FileTransferService fileTransferService,
                           KeyVault keyVault,
                           AuditService auditService,
-                          UserRepository userRepository) {
+                          UserRepository userRepository,
+                          com.securemsg.service.AiBotService aiBotService) {
         this.userService = userService;
         this.messagingService = messagingService;
         this.fileTransferService = fileTransferService;
         this.keyVault = keyVault;
         this.auditService = auditService;
         this.userRepository = userRepository;
+        this.aiBotService = aiBotService;
     }
 
     // ============ USERS ============
@@ -225,6 +228,11 @@ public class DemoController {
     @GetMapping("/audit")
     public List<AuditEvent> audit() {
         return auditService.allEvents();
+    }
+
+    @GetMapping("/bot-id")
+    public Map<String, String> getBotId() {
+        return Map.of("botId", aiBotService.getBotId().toString());
     }
 
     public record RegisterRequest(String login, String password, Role role, String hardwareToken) {

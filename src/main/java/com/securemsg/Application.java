@@ -22,6 +22,8 @@ import org.springframework.kafka.annotation.EnableKafka;
 
 import java.nio.file.Path;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+
 /**
  * Базовый каркас защищённой системы обмена сообщениями.
  *
@@ -33,6 +35,7 @@ import java.nio.file.Path;
  */
 @SpringBootApplication
 @EnableKafka
+@EnableScheduling
 public class Application {
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
