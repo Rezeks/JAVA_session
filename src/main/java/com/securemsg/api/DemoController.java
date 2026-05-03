@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.lang.NonNull;
 
 import java.io.ByteArrayInputStream;
 import java.util.HashMap;
@@ -128,17 +129,17 @@ public class DemoController {
     }
 
     @PostMapping("/messages/{messageId}/deliver")
-    public void confirmDelivery(@PathVariable UUID messageId) {
+    public void confirmDelivery(@PathVariable @NonNull UUID messageId) {
         messagingService.confirmDelivery(messageId);
     }
 
     @PostMapping("/messages/{messageId}/read")
-    public void markRead(@PathVariable UUID messageId, @RequestParam UUID readerId) {
+    public void markRead(@PathVariable @NonNull UUID messageId, @RequestParam @NonNull UUID readerId) {
         messagingService.markRead(messageId, readerId);
     }
 
     @PostMapping("/messages/{messageId}/error")
-    public void markError(@PathVariable UUID messageId, @RequestBody MarkErrorRequest request) {
+    public void markError(@PathVariable @NonNull UUID messageId, @RequestBody @NonNull MarkErrorRequest request) {
         messagingService.markError(messageId, request.reason());
     }
 
@@ -158,7 +159,7 @@ public class DemoController {
     }
 
     @PostMapping("/messages/group/{groupId}/send")
-    public List<Message> sendGroup(@PathVariable UUID groupId, @RequestBody SendGroupRequest request) {
+    public List<Message> sendGroup(@PathVariable @NonNull UUID groupId, @RequestBody @NonNull SendGroupRequest request) {
         return messagingService.sendGroupMessage(request.senderId(), groupId, request.text());
     }
 
@@ -168,22 +169,22 @@ public class DemoController {
     }
 
     @PostMapping(value = "/files/{transferId}/chunk", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public FileTransfer uploadChunk(@PathVariable UUID transferId, @RequestParam long offset, @RequestBody byte[] payload) {
+    public FileTransfer uploadChunk(@PathVariable @NonNull UUID transferId, @RequestParam long offset, @RequestBody @NonNull byte[] payload) {
         return fileTransferService.uploadChunk(transferId, offset, new ByteArrayInputStream(payload));
     }
 
     @PostMapping("/files/{transferId}/finalize")
-    public FileTransfer finalizeUpload(@PathVariable UUID transferId) {
+    public FileTransfer finalizeUpload(@PathVariable @NonNull UUID transferId) {
         return fileTransferService.finalizeUpload(transferId);
     }
 
     @GetMapping("/files/{transferId}/verify")
-    public boolean verifyChecksum(@PathVariable UUID transferId, @RequestParam String checksum) {
+    public boolean verifyChecksum(@PathVariable @NonNull UUID transferId, @RequestParam @NonNull String checksum) {
         return fileTransferService.verifyChecksum(transferId, checksum);
     }
 
     @PostMapping("/files/{transferId}/delivered")
-    public void confirmFileDelivered(@PathVariable UUID transferId) {
+    public void confirmFileDelivered(@PathVariable @NonNull UUID transferId) {
         fileTransferService.confirmDelivered(transferId);
     }
 
@@ -219,7 +220,7 @@ public class DemoController {
     }
 
     @PostMapping("/messages/{messageId}/delete")
-    public void deleteMessage(@PathVariable UUID messageId, @RequestParam UUID requesterId) {
+    public void deleteMessage(@PathVariable @NonNull UUID messageId, @RequestParam @NonNull UUID requesterId) {
         messagingService.deleteMessage(messageId, requesterId);
     }
 
@@ -250,19 +251,19 @@ public class DemoController {
     public record BlockRequest(String reason) {
     }
 
-    public record SendMessageRequest(UUID senderId, UUID recipientId, String text) {
+    public record SendMessageRequest(@NonNull UUID senderId, @NonNull UUID recipientId, @NonNull String text) {
     }
 
-    public record MarkErrorRequest(String reason) {
+    public record MarkErrorRequest(@NonNull String reason) {
     }
 
     public record CreateGroupRequest(UUID ownerId, String name, List<UUID> members) {
     }
 
-    public record SendGroupRequest(UUID senderId, String text) {
+    public record SendGroupRequest(@NonNull UUID senderId, @NonNull String text) {
     }
 
-    public record InitFileRequest(UUID senderId, UUID recipientId, String fileName, long totalSize) {
+    public record InitFileRequest(@NonNull UUID senderId, @NonNull UUID recipientId, @NonNull String fileName, long totalSize) {
     }
 
     public record ImportKeyRequest(String publicKey, String privateKey) {

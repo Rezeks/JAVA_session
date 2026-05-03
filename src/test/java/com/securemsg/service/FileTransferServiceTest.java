@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -35,11 +36,11 @@ class FileTransferServiceTest {
         UUID recipient = UUID.randomUUID();
         byte[] content = "hello-file".getBytes(java.nio.charset.StandardCharsets.UTF_8);
 
-        FileTransfer started = files.initiateUpload(sender, recipient, "hello.txt", content.length);
-        files.uploadChunk(started.id(), 0, new ByteArrayInputStream(content));
-        FileTransfer stored = files.finalizeUpload(started.id());
+        FileTransfer started = files.initiateUpload(Objects.requireNonNull(sender), Objects.requireNonNull(recipient), "hello.txt", content.length);
+        files.uploadChunk(Objects.requireNonNull(started.id()), 0, new ByteArrayInputStream(content));
+        FileTransfer stored = files.finalizeUpload(Objects.requireNonNull(started.id()));
 
         assertEquals(FileTransferStatus.STORED, stored.status());
-        assertTrue(files.verifyChecksum(stored.id(), stored.checksumSha256()));
+        assertTrue(files.verifyChecksum(Objects.requireNonNull(stored.id()), Objects.requireNonNull(stored.checksumSha256())));
     }
 }

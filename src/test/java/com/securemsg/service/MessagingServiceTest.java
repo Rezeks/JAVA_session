@@ -10,6 +10,7 @@ import com.securemsg.security.InMemoryKeyVault;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,9 +33,9 @@ class MessagingServiceTest {
         UUID alice = UUID.randomUUID();
         UUID bob = UUID.randomUUID();
 
-        Message message = messagingService.send(alice, bob, "hello bob");
+        Message message = messagingService.send(Objects.requireNonNull(alice), Objects.requireNonNull(bob), "hello bob");
         assertTrue(message.wrappedMessageKey() != null && !message.wrappedMessageKey().isBlank());
-        messagingService.confirmDelivery(message.id());
+        messagingService.confirmDelivery(Objects.requireNonNull(message.id()));
 
         List<Message> bobHistory = messagingService.syncHistory(bob);
         assertEquals(1, bobHistory.size());
@@ -50,8 +51,8 @@ class MessagingServiceTest {
         UUID alice = UUID.randomUUID();
         UUID bob = UUID.randomUUID();
 
-        Message message = messagingService.send(alice, bob, "hello");
-        messagingService.markError(message.id(), "network");
+        Message message = messagingService.send(Objects.requireNonNull(alice), Objects.requireNonNull(bob), "hello");
+        messagingService.markError(Objects.requireNonNull(message.id()), "network");
 
         Message inHistory = messagingService.syncHistory(bob).getFirst();
         assertEquals(DeliveryStatus.ERROR, inHistory.status());
@@ -65,11 +66,11 @@ class MessagingServiceTest {
         UUID bob = UUID.randomUUID();
         UUID eve = UUID.randomUUID();
 
-        Message message = messagingService.send(alice, bob, "hello");
+        Message message = messagingService.send(Objects.requireNonNull(alice), Objects.requireNonNull(bob), "hello");
 
-        assertThrows(SecurityException.class, () -> messagingService.deleteMessage(message.id(), eve));
+        assertThrows(SecurityException.class, () -> messagingService.deleteMessage(Objects.requireNonNull(message.id()), Objects.requireNonNull(eve)));
 
-        messagingService.deleteMessage(message.id(), bob);
+        messagingService.deleteMessage(Objects.requireNonNull(message.id()), Objects.requireNonNull(bob));
         Message deleted = messagingService.syncHistory(bob).getFirst();
         assertTrue(deleted.status() == DeliveryStatus.DELETED);
     }

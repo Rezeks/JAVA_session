@@ -10,6 +10,7 @@ import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.lang.NonNull;
 
 @Service
 public class AiBotService {
@@ -43,13 +44,14 @@ public class AiBotService {
 
     @Scheduled(fixedDelayString = "5000")
     public void processOfflineMessages() {
-        if (botId == null) return;
+        UUID currentBotId = this.botId;
+        if (currentBotId == null) return;
 
-        List<Message> offlineMessages = messagingService.pullOfflineMessages(botId);
+        List<Message> offlineMessages = messagingService.pullOfflineMessages(currentBotId);
         for (Message msg : offlineMessages) {
             try {
                 // Дешифровка
-                String plainText = messagingService.decryptForRecipient(msg, botId);
+                String plainText = messagingService.decryptForRecipient(msg, currentBotId);
                 
                 // Получение ответа от LLM
                 String aiResponse = aiClient.generateResponse(
@@ -59,11 +61,13 @@ public class AiBotService {
                     plainText
                 );
                 
+                if (aiResponse == null) aiResponse = "I'm sorry, I couldn't process that.";
+
                 // Отправка зашифрованного ответа
-                messagingService.send(botId, msg.senderId(), aiResponse);
+                messagingService.send(currentBotId, msg.senderId(), aiResponse);
                 
                 // Помечаем сообщение как прочитанное
-                messagingService.markRead(msg.id(), botId);
+                messagingService.markRead(msg.id(), currentBotId);
                 
             } catch (Exception e) {
                 System.err.println("Error processing message for AI bot: " + e.getMessage());

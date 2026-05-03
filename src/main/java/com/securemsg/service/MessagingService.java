@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -70,7 +71,7 @@ public class MessagingService {
 
         messageRepository.save(message);
         auditService.record("MESSAGE_SENT", senderId.toString(), "Message " + message.id() + " to " + recipientId);
-        publishEvent("message.sent", message.id().toString());
+        publishEvent("message.sent", Objects.requireNonNull(message.id().toString()));
         return message;
     }
 
@@ -121,7 +122,7 @@ public class MessagingService {
         existing.withStatus(DeliveryStatus.DELIVERED);
         messageRepository.save(existing);
         auditService.record("MESSAGE_DELIVERED", existing.recipientId().toString(), "Message " + messageId + " delivered");
-        publishEvent("message.delivered", messageId.toString());
+        publishEvent("message.delivered", Objects.requireNonNull(messageId.toString()));
     }
 
     public void markRead(@NonNull UUID messageId, @NonNull UUID readerId) {
@@ -147,7 +148,7 @@ public class MessagingService {
     }
 
     public void deleteMessage(UUID messageId, UUID requesterId, Role requesterRole) {
-        Message existing = requireMessage(messageId);
+        Message existing = requireMessage(Objects.requireNonNull(messageId));
         boolean ownsMessage = existing.senderId().equals(requesterId) || existing.recipientId().equals(requesterId);
         boolean privileged = requesterRole == Role.ADMIN || requesterRole == Role.OPERATOR;
         if (!ownsMessage && !privileged) {
@@ -199,7 +200,7 @@ public class MessagingService {
         keyRotationByAlias.put(alias, Instant.now());
         ratchetStepByAlias.put(alias, 0);
         auditService.record("POST_COMPROMISE_RECOVERY", alias, "User keys rotated after compromise event");
-        publishEvent("security.recovered", alias);
+        publishEvent("security.recovered", Objects.requireNonNull(alias));
     }
 
     public Message sendFileNotification(UUID senderId, UUID recipientId, UUID transferId, String encryptedPayload) {
@@ -215,14 +216,14 @@ public class MessagingService {
                 DeliveryStatus.QUEUED, Instant.now(), Instant.now());
         messageRepository.save(message);
         auditService.record("FILE_NOTIFICATION_SENT", senderId.toString(), "Transfer " + transferId + " -> " + recipientId);
-        publishEvent("file.notification.sent", transferId.toString());
+        publishEvent("file.notification.sent", Objects.requireNonNull(transferId.toString()));
         return message;
     }
 
     @NonNull
     private GroupChat requireGroup(@NonNull UUID groupId) {
-        return groupChatRepository.findById(groupId)
-                .orElseThrow(() -> new IllegalArgumentException("Group not found"));
+        return Objects.requireNonNull(groupChatRepository.findById(groupId)
+                .orElseThrow(() -> new IllegalArgumentException("Group not found")));
     }
 
     private String groupKeyAlias(UUID groupId) {
@@ -238,7 +239,7 @@ public class MessagingService {
         }
     }
 
-    private void publishEvent(String topic, String payload) {
+    private void publishEvent(@NonNull String topic, @NonNull String payload) {
         if (kafkaTemplate == null) {
             return;
         }
@@ -253,7 +254,7 @@ public class MessagingService {
 
     @NonNull
     private Message requireMessage(@NonNull UUID messageId) {
-        return messageRepository.findById(messageId)
-                .orElseThrow(() -> new IllegalArgumentException("Message not found"));
+        return Objects.requireNonNull(messageRepository.findById(messageId)
+                .orElseThrow(() -> new IllegalArgumentException("Message not found")));
     }
 }
