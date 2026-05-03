@@ -42,10 +42,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/ui/**").permitAll()
+                        .requestMatchers("/", "/index.html", "/app/**", "/ui/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/api-docs/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/encryption/**").permitAll()
+                        .requestMatchers("/api/bot-id").permitAll()
+                        .requestMatchers("/api/users").permitAll()
 
                         // Admin-only endpoints
                         .requestMatchers(HttpMethod.POST, "/api/users/*/block").hasRole("ADMIN")

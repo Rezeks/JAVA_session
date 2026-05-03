@@ -2,6 +2,7 @@ const API_BASE = '/api';
 let token = '';
 let currentUserId = '';
 let currentTargetId = '';
+let botId = '';
 
 const app = {
     toggleScreen: (screenId) => {
@@ -63,6 +64,14 @@ const app = {
                     }
                 } catch(e) {}
                 
+                try {
+                    const botRes = await fetch(`${API_BASE}/bot-id`);
+                    if(botRes.ok) {
+                        const botData = await botRes.json();
+                        botId = botData.botId;
+                    }
+                } catch(e) {}
+                
                 app.loadUsers();
                 setInterval(app.pollMessages, 3000);
             } else {
@@ -86,13 +95,14 @@ const app = {
 
             users.forEach(u => {
                 if (u.login !== myLogin) {
+                    const isBot = u.id === botId;
                     const div = document.createElement('div');
-                    div.className = 'contact-item';
+                    div.className = `contact-item ${isBot ? 'bot-contact' : ''}`;
                     div.onclick = () => app.selectContact(u.id, u.login, div);
                     div.innerHTML = `
-                        <div class="avatar" style="width:40px;height:40px;font-size:1rem">${u.login.charAt(0).toUpperCase()}</div>
+                        <div class="avatar" style="width:40px;height:40px;font-size:1rem; ${isBot ? 'background: linear-gradient(135deg, #10b981, #059669);' : ''}">${isBot ? '🤖' : u.login.charAt(0).toUpperCase()}</div>
                         <div class="user-info">
-                            <span class="user-name">${u.login}</span>
+                            <span class="user-name">${u.login} ${isBot ? '<span class="bot-badge">BOT</span>' : ''}</span>
                         </div>
                     `;
                     list.appendChild(div);
@@ -123,12 +133,19 @@ const app = {
 
         try {
             // Frontend assumes transparent encryption for UI simplicity, backend handles CryptoService
-            const res = await fetch(`${API_BASE}/messages`, {
+            const res = await fetch(`${API_BASE}/messages/send`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ recipientId: currentTargetId, text: text })
+                body: JSON.stringify({ senderId: currentUserId, recipientId: currentTargetId, text: text })
             });
             if(res.ok) {
+                const msg = await res.json();
+                
+                // Save sent message locally to bypass decryption limitation
+                const sentMsgs = JSON.parse(localStorage.getItem('sentMsgs') || '{}');
+                sentMsgs[msg.id] = text;
+                localStorage.setItem('sentMsgs', JSON.stringify(sentMsgs));
+
                 input.value = '';
                 app.appendMessage(text, 'sent');
             } else {
@@ -146,8 +163,8 @@ const app = {
     pollMessages: async () => {
         if(!token) return;
         try {
-            const res = await fetch(`${API_BASE}/messages/offline`, {
-                method: 'POST',
+            const res = await fetch(`${API_BASE}/messages/offline/${currentUserId}`, {
+                method: 'GET',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if(res.ok) {
@@ -161,7 +178,7 @@ const app = {
 
     loadHistory: async (otherUserId) => {
         try {
-            const res = await fetch(`${API_BASE}/messages/history`, {
+            const res = await fetch(`${API_BASE}/messages/history/${currentUserId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const allMsgs = await res.json();
@@ -181,13 +198,26 @@ const app = {
 
             for (const m of chatMsgs) {
                 let text = "[Зашифровано RSA/AES]";
-                // Decrypt via backend for demo purposes
-                try {
-                    const decRes = await fetch(`${API_BASE}/messages/${m.id}/decrypt`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if(decRes.ok) text = await decRes.text();
-                } catch(e) {}
+                
+                if (m.senderId === currentUserId) {
+                    // It's our own message, load from local storage
+                    const sentMsgs = JSON.parse(localStorage.getItem('sentMsgs') || '{}');
+                    if (sentMsgs[m.id]) {
+                        text = sentMsgs[m.id];
+                    }
+                } else {
+                    // Decrypt incoming message
+                    try {
+                        const decRes = await fetch(`${API_BASE}/messages/${m.id}/decrypt?recipientId=${currentUserId}`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if(decRes.ok) {
+                            const decData = await decRes.json();
+                            text = decData.plaintext;
+                        }
+                    } catch(e) {}
+                }
 
                 const type = m.senderId === currentUserId ? 'sent' : 'received';
                 app.appendMessage(text, type);
