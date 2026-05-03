@@ -51,7 +51,7 @@ public class MessagingService {
         this(cryptoService, keyVault, auditService, null, messageRepository, groupChatRepository);
     }
 
-    public Message send(UUID senderId, UUID recipientId, String plainText) {
+    public Message send(@NonNull UUID senderId, @NonNull UUID recipientId, @NonNull String plainText) {
         String keyAlias = recipientId.toString();
         rotateKeyIfNeeded(keyAlias);
         byte[] oneTimeMessageKey = CryptoService.generateRandomBytes(32);
@@ -84,7 +84,7 @@ public class MessagingService {
         return group;
     }
 
-    public List<Message> sendGroupMessage(UUID senderId, UUID groupId, String plainText) {
+    public List<Message> sendGroupMessage(@NonNull UUID senderId, @NonNull UUID groupId, @NonNull String plainText) {
         GroupChat group = requireGroup(groupId);
         if (!group.members().contains(senderId)) {
             throw new SecurityException("Sender is not in group");
@@ -116,7 +116,7 @@ public class MessagingService {
         return created;
     }
 
-    public void confirmDelivery(UUID messageId) {
+    public void confirmDelivery(@NonNull UUID messageId) {
         Message existing = requireMessage(messageId);
         existing.withStatus(DeliveryStatus.DELIVERED);
         messageRepository.save(existing);
@@ -124,7 +124,7 @@ public class MessagingService {
         publishEvent("message.delivered", messageId.toString());
     }
 
-    public void markRead(UUID messageId, UUID readerId) {
+    public void markRead(@NonNull UUID messageId, @NonNull UUID readerId) {
         Message existing = requireMessage(messageId);
         if (!existing.recipientId().equals(readerId)) {
             throw new SecurityException("Only recipient can mark message as read");
@@ -134,7 +134,7 @@ public class MessagingService {
         auditService.record("MESSAGE_READ", readerId.toString(), "Message " + messageId + " read");
     }
 
-    public void markError(UUID messageId, String reason) {
+    public void markError(@NonNull UUID messageId, @NonNull String reason) {
         Message existing = requireMessage(messageId);
         existing.withStatus(DeliveryStatus.ERROR);
         messageRepository.save(existing);
@@ -142,7 +142,7 @@ public class MessagingService {
         publishEvent("message.error", messageId + ":" + reason);
     }
 
-    public void deleteMessage(UUID messageId, UUID requesterId) {
+    public void deleteMessage(@NonNull UUID messageId, @NonNull UUID requesterId) {
         deleteMessage(messageId, requesterId, Role.USER);
     }
 

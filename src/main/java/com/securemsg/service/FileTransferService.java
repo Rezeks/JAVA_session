@@ -42,7 +42,7 @@ public class FileTransferService {
         this.fileTransferRepository = fileTransferRepository;
     }
 
-    public FileTransfer initiateUpload(UUID senderId, UUID recipientId, String fileName, long totalSize) {
+    public FileTransfer initiateUpload(@NonNull UUID senderId, @NonNull UUID recipientId, @NonNull String fileName, long totalSize) {
         if (totalSize <= 0 || totalSize > MAX_FILE_SIZE) {
             throw new IllegalArgumentException("File size must be in range (0, 2GB]");
         }
@@ -64,7 +64,7 @@ public class FileTransferService {
         return transfer;
     }
 
-    public FileTransfer uploadChunk(UUID transferId, long offset, InputStream chunkData) {
+    public FileTransfer uploadChunk(@NonNull UUID transferId, long offset, @NonNull InputStream chunkData) {
         FileTransfer transfer = requireTransfer(transferId);
         if (transfer.status() != FileTransferStatus.UPLOADING) {
             throw new IllegalStateException("Transfer is not in UPLOADING state");
@@ -91,7 +91,7 @@ public class FileTransferService {
         }
     }
 
-    public FileTransfer finalizeUpload(UUID transferId) {
+    public FileTransfer finalizeUpload(@NonNull UUID transferId) {
         FileTransfer transfer = requireTransfer(transferId);
         Path plainPath = plainUploadPath(transfer.id());
         if (!Files.exists(plainPath)) {
@@ -120,12 +120,12 @@ public class FileTransferService {
         return transfer;
     }
 
-    public boolean verifyChecksum(UUID transferId, String expectedChecksum) {
+    public boolean verifyChecksum(@NonNull UUID transferId, @NonNull String expectedChecksum) {
         FileTransfer transfer = requireTransfer(transferId);
         return transfer.checksumSha256() != null && transfer.checksumSha256().equalsIgnoreCase(expectedChecksum);
     }
 
-    public void confirmDelivered(UUID transferId) {
+    public void confirmDelivered(@NonNull UUID transferId) {
         FileTransfer transfer = requireTransfer(transferId);
         transfer.withStatus(FileTransferStatus.DELIVERED);
         fileTransferRepository.save(transfer);
