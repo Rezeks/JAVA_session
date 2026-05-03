@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.Objects;
 import java.util.UUID;
 
 public class FileTransferService {
@@ -134,8 +135,8 @@ public class FileTransferService {
 
     @NonNull
     private FileTransfer requireTransfer(@NonNull UUID transferId) {
-        return fileTransferRepository.findById(transferId)
-                .orElseThrow(() -> new IllegalArgumentException("Transfer not found"));
+        return Objects.requireNonNull(fileTransferRepository.findById(transferId)
+                .orElseThrow(() -> new IllegalArgumentException("Transfer not found")));
     }
 
     private Path plainUploadPath(UUID transferId) {

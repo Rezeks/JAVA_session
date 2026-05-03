@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Objects;
 import java.util.UUID;
 
 @RestController
@@ -83,7 +84,12 @@ public class DemoController {
         String token = request.hardwareToken() == null || request.hardwareToken().isBlank()
                 ? UUID.randomUUID().toString().substring(0, 8)
                 : request.hardwareToken();
-        return userService.register(request.login(), request.password(), role, token);
+        return userService.register(
+                Objects.requireNonNull(request.login()), 
+                Objects.requireNonNull(request.password()), 
+                Objects.requireNonNull(role), 
+                Objects.requireNonNull(token)
+        );
     }
 
     @PostMapping("/users/{login}/confirm")
@@ -103,7 +109,10 @@ public class DemoController {
 
     @PostMapping("/users/{login}/password")
     public User changePassword(@PathVariable String login, @RequestBody ChangePasswordRequest request) {
-        return userService.changePassword(login, request.newPassword());
+        return userService.changePassword(
+                Objects.requireNonNull(login), 
+                Objects.requireNonNull(request.newPassword())
+        );
     }
 
     @PostMapping("/users/{login}/block")

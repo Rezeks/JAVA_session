@@ -8,9 +8,9 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.lang.NonNull;
 
 @Service
 public class AiBotService {
@@ -64,15 +64,15 @@ public class AiBotService {
                 if (aiResponse == null) aiResponse = "I'm sorry, I couldn't process that.";
 
                 // Отправка зашифрованного ответа
-                messagingService.send(currentBotId, msg.senderId(), aiResponse);
+                messagingService.send(currentBotId, Objects.requireNonNull(msg.senderId()), aiResponse);
                 
                 // Помечаем сообщение как прочитанное
-                messagingService.markRead(msg.id(), currentBotId);
+                messagingService.markRead(Objects.requireNonNull(msg.id()), currentBotId);
                 
             } catch (Exception e) {
                 System.err.println("Error processing message for AI bot: " + e.getMessage());
                 // В случае ошибки пометим как error
-                messagingService.markError(msg.id(), "AI processing error");
+                messagingService.markError(Objects.requireNonNull(msg.id()), "AI processing error");
             }
         }
     }

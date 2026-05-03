@@ -11,8 +11,10 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.lang.NonNull;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -37,11 +39,13 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public User register(String login, String password) {
+    @NonNull
+    public User register(@NonNull String login, @NonNull String password) {
         return register(login, password, Role.USER, generateHardwareToken());
     }
 
-    public User register(String login, String password, Role role, String hardwareTokenSecret) {
+    @NonNull
+    public User register(@NonNull String login, @NonNull String password, @NonNull Role role, @NonNull String hardwareTokenSecret) {
         if (userRepository.existsByLogin(login)) {
             throw new IllegalArgumentException("Login already exists");
         }
@@ -64,15 +68,15 @@ public class UserService {
     public User confirm(String login) {
         User existing = requireUser(login);
         existing.withStatus(UserStatus.ACTIVE);
-        userRepository.save(existing);
-        auditService.record("USER_CONFIRMED", login, "User account confirmed");
+        userRepository.save(Objects.requireNonNull(existing));
+        auditService.record("USER_CONFIRMED", Objects.requireNonNull(login), "User account confirmed");
         return existing;
     }
 
     public boolean authenticate(String login, String password) {
         User user = requireUser(login);
         if (user.status() != UserStatus.ACTIVE) {
-            auditService.record("AUTH_FAILED", login, "User is not active");
+            auditService.record("AUTH_FAILED", Objects.requireNonNull(login), "User is not active");
             return false;
         }
         if (!verifyPassword(password, user.passwordHash())) {
@@ -97,7 +101,7 @@ public class UserService {
         }
         user.withFailedAttempts(0);
         userRepository.save(user);
-        auditService.record("AUTH_OK_2FA", login, "2FA passed");
+        auditService.record("AUTH_OK_2FA", Objects.requireNonNull(login), "2FA passed");
         return true;
     }
 
@@ -105,7 +109,7 @@ public class UserService {
         User existing = requireUser(login);
         existing.withRole(role);
         userRepository.save(existing);
-        auditService.record("ROLE_ASSIGNED", login, "Role set to " + role);
+        auditService.record("ROLE_ASSIGNED", Objects.requireNonNull(login), "Role set to " + role);
         return existing;
     }
 
@@ -113,7 +117,7 @@ public class UserService {
         User existing = requireUser(login);
         existing.withHardwareTokenSecret(generateHardwareToken());
         userRepository.save(existing);
-        auditService.record("HARDWARE_TOKEN_ROTATED", login, "Token rotated");
+        auditService.record("HARDWARE_TOKEN_ROTATED", Objects.requireNonNull(login), "Token rotated");
         return existing;
     }
 
@@ -121,7 +125,7 @@ public class UserService {
         User existing = requireUser(login);
         existing.withStatus(UserStatus.BLOCKED);
         userRepository.save(existing);
-        auditService.record("USER_BLOCKED", login, reason);
+        auditService.record("USER_BLOCKED", Objects.requireNonNull(login), reason);
         return existing;
     }
 
@@ -133,7 +137,7 @@ public class UserService {
         existing.withFailedAttempts(0);
         existing.withHardwareTokenSecret(generateHardwareToken());
         userRepository.save(existing);
-        auditService.record("USER_RECOVERED", login, "Credentials and keys rotated after compromise");
+        auditService.record("USER_RECOVERED", Objects.requireNonNull(login), "Credentials and keys rotated after compromise");
         return existing;
     }
 
@@ -141,18 +145,19 @@ public class UserService {
         return userRepository.findByLogin(login);
     }
 
-    private void onAuthFailure(User user, String reason) {
+    private void onAuthFailure(@NonNull User user, String reason) {
         int attempts = user.failedAuthAttempts() + 1;
         user.withFailedAttempts(attempts);
         if (attempts >= MAX_FAILED_AUTH_ATTEMPTS) {
             user.withStatus(UserStatus.BLOCKED);
-            auditService.record("USER_AUTO_BLOCKED", user.login(), "Too many failed attempts");
+            auditService.record("USER_AUTO_BLOCKED", Objects.requireNonNull(user.login()), "Too many failed attempts");
         }
         userRepository.save(user);
-        auditService.record("AUTH_FAILED", user.login(), reason + "; attempts=" + attempts);
+        auditService.record("AUTH_FAILED", Objects.requireNonNull(user.login()), reason + "; attempts=" + attempts);
     }
 
-    private User requireUser(String login) {
+    @NonNull
+    private User requireUser(@NonNull String login) {
         return userRepository.findByLogin(login)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
@@ -207,16 +212,17 @@ public class UserService {
         }
     }
 
+    @NonNull
     private String generateHardwareToken() {
         return UUID.randomUUID().toString().substring(0, 8);
     }
 
-    public User changePassword(String login, String newPassword) {
+    public User changePassword(@NonNull String login, @NonNull String newPassword) {
         User existing = requireUser(login);
         existing.withPasswordHash(hash(newPassword));
         existing.withFailedAttempts(0);
         userRepository.save(existing);
-        auditService.record("PASSWORD_CHANGED", login, "Password changed");
+        auditService.record("PASSWORD_CHANGED", Objects.requireNonNull(login), "Password changed");
         return existing;
     }
 }

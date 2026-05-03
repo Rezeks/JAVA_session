@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.lang.NonNull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -88,6 +89,6 @@ public class AuthController {
         return response;
     }
 
-    public record RegisterRequest(String login, String password, Role role, String hardwareToken) {}
-    public record LoginRequest(String login, String password, String hardwareToken) {}
+    public record RegisterRequest(@NonNull String login, @NonNull String password, Role role, String hardwareToken) {}
+    public record LoginRequest(@NonNull String login, @NonNull String password, String hardwareToken) {}
 }
