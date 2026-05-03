@@ -19,6 +19,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.nio.file.Path;
 
@@ -57,8 +58,8 @@ public class Application {
     }
 
     @Bean
-    public UserService userService(AuditService auditService, KeyVault keyVault, UserRepository userRepository) {
-        return new UserService(auditService, keyVault, userRepository);
+    public UserService userService(AuditService auditService, KeyVault keyVault, UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        return new UserService(auditService, keyVault, userRepository, passwordEncoder);
     }
 
     @Bean

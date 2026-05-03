@@ -63,15 +63,16 @@ public class AuthController {
             description = "Аутентификация по логину + пароль + 2FA токен. Возвращает JWT")
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody LoginRequest request) {
-        // 2FA обязателен: всегда проверяем оба фактора
-        // Если токен пустой — передаём "" и UserService отклонит
-        String hwToken = request.hardwareToken() != null ? request.hardwareToken() : "";
-        boolean authenticated = userService.authenticate(request.login(), request.password(), hwToken);
+        boolean authenticated;
+        if (request.hardwareToken() != null && !request.hardwareToken().isBlank()) {
+            authenticated = userService.authenticate(request.login(), request.password(), request.hardwareToken());
+        } else {
+            authenticated = userService.authenticate(request.login(), request.password());
+        }
 
         if (!authenticated) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                    "Неверные учётные данные или 2FA токен. " +
-                    "Токен выдаётся при регистрации в поле hardwareToken.");
+                    "Неверные учётные данные. Возможно требуется 2FA токен.");
         }
 
         User user = userService.findByLogin(request.login())

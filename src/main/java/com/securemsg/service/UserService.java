@@ -6,19 +6,12 @@ import com.securemsg.domain.UserStatus;
 import com.securemsg.repository.UserRepository;
 import com.securemsg.security.KeyVault;
 
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.lang.NonNull;
-import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import java.security.spec.InvalidKeySpecException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Сервис управления пользователями: регистрация, аутентификация (PBKDF2 + 2FA),
@@ -26,17 +19,17 @@ import java.security.spec.InvalidKeySpecException;
  */
 public class UserService {
     private static final int MAX_FAILED_AUTH_ATTEMPTS = 5;
-    private static final int PBKDF2_ITERATIONS = 100_000;
-    private static final int SALT_SIZE = 32;
 
     private final UserRepository userRepository;
     private final AuditService auditService;
     private final KeyVault keyVault;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(AuditService auditService, KeyVault keyVault, UserRepository userRepository) {
+    public UserService(AuditService auditService, KeyVault keyVault, UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.auditService = auditService;
         this.keyVault = keyVault;
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @NonNull
@@ -52,7 +45,7 @@ public class UserService {
         User user = new User(
                 UUID.randomUUID(),
                 login,
-                hash(password),
+                passwordEncoder.encode(password),
                 UserStatus.PENDING_CONFIRMATION,
                 role,
                 hardwareTokenSecret,
@@ -79,7 +72,7 @@ public class UserService {
             auditService.record("AUTH_FAILED", Objects.requireNonNull(login), "User is not active");
             return false;
         }
-        if (!verifyPassword(password, user.passwordHash())) {
+        if (!passwordEncoder.matches(password, user.passwordHash())) {
             onAuthFailure(user, "Wrong password");
             return false;
         }
@@ -162,56 +155,6 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 
-    private String hash(String input) {
-        return hashPassword(input);
-    }
-
-    /**
-     * Password hashing with PBKDF2-SHA256.
-     * Returns format: "salt$hash" (both base64-encoded).
-     */
-    public static String hashPassword(String password) {
-        try {
-            byte[] salt = new byte[SALT_SIZE];
-            SecureRandom random = new SecureRandom();
-            random.nextBytes(salt);
-
-            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, PBKDF2_ITERATIONS, 256);
-            SecretKey key = factory.generateSecret(spec);
-            byte[] hash = key.getEncoded();
-
-            String encodedSalt = Base64.getEncoder().encodeToString(salt);
-            String encodedHash = Base64.getEncoder().encodeToString(hash);
-            return encodedSalt + "$" + encodedHash;
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw new IllegalStateException("PBKDF2 algorithm not available", e);
-        }
-    }
-
-    /**
-     * Verify password against PBKDF2 hash.
-     */
-    public static boolean verifyPassword(String password, String storedHash) {
-        try {
-            String[] parts = storedHash.split("\\$");
-            if (parts.length != 2) {
-                throw new IllegalStateException("Invalid password hash format");
-            }
-            byte[] salt = Base64.getDecoder().decode(parts[0]);
-
-            SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-            PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, PBKDF2_ITERATIONS, 256);
-            SecretKey key = factory.generateSecret(spec);
-            byte[] hash = key.getEncoded();
-
-            byte[] storedHashBytes = Base64.getDecoder().decode(parts[1]);
-            return Arrays.equals(hash, storedHashBytes);
-        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-            throw new IllegalStateException("PBKDF2 algorithm not available", e);
-        }
-    }
-
     @NonNull
     private String generateHardwareToken() {
         return UUID.randomUUID().toString().substring(0, 8);
@@ -219,7 +162,7 @@ public class UserService {
 
     public User changePassword(@NonNull String login, @NonNull String newPassword) {
         User existing = requireUser(login);
-        existing.withPasswordHash(hash(newPassword));
+        existing.withPasswordHash(passwordEncoder.encode(newPassword));
         existing.withFailedAttempts(0);
         userRepository.save(existing);
         auditService.record("PASSWORD_CHANGED", Objects.requireNonNull(login), "Password changed");
