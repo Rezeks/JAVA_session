@@ -71,7 +71,7 @@ info:
     description: Защищённая система обмена сообщениями
 
 ai:
-  provider: gemini
-  api-key: ${AI_API_KEY:demo-key}
-  model: gemini-1.5-flash
-  url: https://generativelanguage.googleapis.com/v1beta/models/
+  provider: ollama
+  api-key: empty # Для локальных моделей ключ обычно не нужен
+  model: llama3.2 # Или qwen2.5:0.5b для максимальной скорости
+  url: http://localhost:11434/v1/chat/completions

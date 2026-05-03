@@ -18,13 +18,13 @@ public class AiClient {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
-    @Value("${ai.api-key}")
+    @Value("${ai.api-key:empty}")
     private String apiKey;
 
-    @Value("${ai.model:gemini-1.5-flash}")
+    @Value("${ai.model:llama3.2}")
     private String model;
 
-    @Value("${ai.url:https://generativelanguage.googleapis.com/v1beta/models/}")
+    @Value("${ai.url:http://localhost:11434/v1/chat/completions}")
     private String apiUrl;
 
     public AiClient(ObjectMapper objectMapper) {
@@ -34,25 +34,22 @@ public class AiClient {
 
     public String generateResponse(String systemPrompt, String userMessage) {
         try {
-            // Формат запроса для Google Gemini REST API
+            // Формат запроса OpenAI (поддерживается всеми локальными серверами: Ollama, LM Studio)
             Map<String, Object> requestBody = Map.of(
-                "systemInstruction", Map.of(
-                    "parts", List.of(Map.of("text", systemPrompt))
-                ),
-                "contents", List.of(
-                    Map.of("parts", List.of(Map.of("text", userMessage)))
-                )
+                    "model", model,
+                    "messages", List.of(
+                            Map.of("role", "system", "content", systemPrompt),
+                            Map.of("role", "user", "content", userMessage)
+                    ),
+                    "temperature", 0.7
             );
 
             String requestBodyJson = objectMapper.writeValueAsString(requestBody);
 
-            // Собираем URL: https://.../models/gemini-1.5-flash:generateContent
-            String fullUrl = apiUrl.endsWith("/") ? apiUrl : apiUrl + "/";
-            fullUrl += model + ":generateContent?key=" + apiKey;
-
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(fullUrl))
+                    .uri(URI.create(apiUrl))
                     .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + apiKey)
                     .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson))
                     .build();
 
@@ -60,17 +57,14 @@ public class AiClient {
             
             if (response.statusCode() >= 200 && response.statusCode() < 300) {
                 JsonNode root = objectMapper.readTree(response.body());
-                return root.path("candidates").get(0)
-                           .path("content")
-                           .path("parts").get(0)
-                           .path("text").asText();
+                return root.path("choices").get(0).path("message").path("content").asText();
             } else {
-                System.err.println("Gemini API Error: " + response.statusCode() + " " + response.body());
-                return "Извините, в данный момент я не могу ответить. (Ошибка Gemini API)";
+                System.err.println("Local AI API Error: " + response.statusCode() + " " + response.body());
+                return "Извините, локальный AI сервер недоступен или вернул ошибку.";
             }
         } catch (Exception e) {
-            System.err.println("Failed to call Gemini API: " + e.getMessage());
-            return "Ошибка связи с AI: " + e.getMessage();
+            System.err.println("Failed to call Local AI API: " + e.getMessage());
+            return "Ошибка связи с локальным AI: " + e.getMessage();
         }
     }
 }
