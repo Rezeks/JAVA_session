@@ -39,8 +39,8 @@ public class AuthController {
             description = "Создаёт пользователя, хеширует пароль (PBKDF2), возвращает JWT токен")
     @PostMapping("/register")
     public Map<String, Object> register(@RequestBody RegisterRequest request) {
-        Role role = request.role() == null ? Role.USER : request.role();
-        String token = request.hardwareToken() == null || request.hardwareToken().isBlank()
+        @NonNull Role role = request.role() == null ? Role.USER : request.role();
+        @NonNull String token = request.hardwareToken() == null || request.hardwareToken().isBlank()
                 ? UUID.randomUUID().toString().substring(0, 8)
                 : request.hardwareToken();
         User user = userService.register(request.login(), request.password(), role, token);

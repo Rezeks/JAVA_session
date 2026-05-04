@@ -28,7 +28,7 @@ public class InMemoryGroupChatRepository implements GroupChatRepository {
     @Override public void deleteAll() { store.clear(); }
 
     @Override @NonNull public <S extends GroupChat> List<S> saveAll(@NonNull Iterable<S> entities) { entities.forEach(this::save); return (List<S>) findAll(); }
-    @Override @NonNull public List<GroupChat> findAllById(@NonNull Iterable<UUID> ids) { List<GroupChat> r = new ArrayList<>(); ids.forEach(id -> findById(id).ifPresent(r::add)); return Objects.requireNonNull(r); }
+    @Override @NonNull public List<GroupChat> findAllById(@NonNull Iterable<UUID> ids) { List<GroupChat> r = new ArrayList<>(); for (UUID id : ids) { if (id != null) findById(id).ifPresent(r::add); } return Objects.requireNonNull(r); }
     @Override public void deleteAllById(@NonNull Iterable<? extends UUID> ids) { ids.forEach(this::deleteById); }
     @Override public void deleteAll(@NonNull Iterable<? extends GroupChat> entities) { entities.forEach(this::delete); }
     @Override public void flush() {}

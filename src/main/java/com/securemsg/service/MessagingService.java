@@ -263,10 +263,10 @@ public class MessagingService {
 
     private void notifyUser(String userId, String eventType, Message message) {
         if (messagingTemplate != null) {
-            messagingTemplate.convertAndSend("/topic/user." + userId, Map.of(
+            messagingTemplate.convertAndSend("/topic/user." + userId, Objects.requireNonNull(Map.of(
                 "type", eventType,
                 "message", message
-            ));
+            )));
         }
     }
 

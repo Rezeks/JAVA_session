@@ -35,7 +35,7 @@ public class InMemoryUserRepository implements UserRepository {
 
     // --- Unused stubs ---
     @Override @NonNull public <S extends User> List<S> saveAll(@NonNull Iterable<S> entities) { entities.forEach(this::save); return (List<S>) findAll(); }
-    @Override @NonNull public List<User> findAllById(@NonNull Iterable<UUID> ids) { List<User> r = new ArrayList<>(); ids.forEach(id -> findById(id).ifPresent(r::add)); return Objects.requireNonNull(r); }
+    @Override @NonNull public List<User> findAllById(@NonNull Iterable<UUID> ids) { List<User> r = new ArrayList<>(); for (UUID id : ids) { if (id != null) findById(id).ifPresent(r::add); } return Objects.requireNonNull(r); }
     @Override public void deleteAllById(@NonNull Iterable<? extends UUID> ids) { ids.forEach(this::deleteById); }
     @Override public void deleteAll(@NonNull Iterable<? extends User> entities) { entities.forEach(this::delete); }
     @Override public void flush() {}
