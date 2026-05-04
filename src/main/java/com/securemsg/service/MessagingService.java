@@ -9,6 +9,7 @@ import com.securemsg.repository.MessageRepository;
 import com.securemsg.security.CryptoService;
 import com.securemsg.security.KeyVault;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import org.springframework.lang.NonNull;
 import java.security.KeyPair;
@@ -35,21 +36,24 @@ public class MessagingService {
     private final KeyVault keyVault;
     private final AuditService auditService;
     private final KafkaTemplate<String, String> kafkaTemplate;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public MessagingService(CryptoService cryptoService, KeyVault keyVault, AuditService auditService,
                             KafkaTemplate<String, String> kafkaTemplate,
-                            MessageRepository messageRepository, GroupChatRepository groupChatRepository) {
+                            MessageRepository messageRepository, GroupChatRepository groupChatRepository,
+                            SimpMessagingTemplate messagingTemplate) {
         this.cryptoService = cryptoService;
         this.keyVault = keyVault;
         this.auditService = auditService;
         this.kafkaTemplate = kafkaTemplate;
         this.messageRepository = messageRepository;
         this.groupChatRepository = groupChatRepository;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public MessagingService(CryptoService cryptoService, KeyVault keyVault, AuditService auditService,
                             MessageRepository messageRepository, GroupChatRepository groupChatRepository) {
-        this(cryptoService, keyVault, auditService, null, messageRepository, groupChatRepository);
+        this(cryptoService, keyVault, auditService, null, messageRepository, groupChatRepository, null);
     }
 
     public Message send(@NonNull UUID senderId, @NonNull UUID recipientId, @NonNull String plainText) {
@@ -72,6 +76,7 @@ public class MessagingService {
         messageRepository.save(message);
         auditService.record("MESSAGE_SENT", senderId.toString(), "Message " + message.id() + " to " + recipientId);
         publishEvent("message.sent", Objects.requireNonNull(message.id().toString()));
+        notifyUser(recipientId.toString(), "message.new", message);
         return message;
     }
 
@@ -111,6 +116,7 @@ public class MessagingService {
                     DeliveryStatus.QUEUED, Instant.now(), Instant.now());
             messageRepository.save(message);
             created.add(message);
+            notifyUser(memberId.toString(), "group.message.new", message);
         }
         auditService.record("GROUP_MESSAGE_SENT", senderId.toString(), "Group " + groupId + ", fanout=" + created.size());
         publishEvent("group.message.sent", groupId + ":" + created.size());
@@ -123,6 +129,7 @@ public class MessagingService {
         messageRepository.save(existing);
         auditService.record("MESSAGE_DELIVERED", existing.recipientId().toString(), "Message " + messageId + " delivered");
         publishEvent("message.delivered", Objects.requireNonNull(messageId.toString()));
+        notifyUser(existing.senderId().toString(), "message.delivered", existing);
     }
 
     public void markRead(@NonNull UUID messageId, @NonNull UUID readerId) {
@@ -133,6 +140,7 @@ public class MessagingService {
         existing.withStatus(DeliveryStatus.READ);
         messageRepository.save(existing);
         auditService.record("MESSAGE_READ", readerId.toString(), "Message " + messageId + " read");
+        notifyUser(existing.senderId().toString(), "message.read", existing);
     }
 
     public void markError(@NonNull UUID messageId, @NonNull String reason) {
@@ -141,6 +149,7 @@ public class MessagingService {
         messageRepository.save(existing);
         auditService.record("MESSAGE_ERROR", existing.recipientId().toString(), "Message " + messageId + " error=" + reason);
         publishEvent("message.error", messageId + ":" + reason);
+        notifyUser(existing.senderId().toString(), "message.error", existing);
     }
 
     public void deleteMessage(@NonNull UUID messageId, @NonNull UUID requesterId) {
@@ -249,6 +258,15 @@ public class MessagingService {
             // Kafka недоступна — логируем, но не прерываем бизнес-логику.
             // Сообщение уже сохранено в PostgreSQL.
             System.err.println("[WARN] Kafka publish failed (topic=" + topic + "): " + e.getMessage());
+        }
+    }
+
+    private void notifyUser(String userId, String eventType, Message message) {
+        if (messagingTemplate != null) {
+            messagingTemplate.convertAndSend("/topic/user." + userId, Map.of(
+                "type", eventType,
+                "message", message
+            ));
         }
     }
 

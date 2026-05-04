@@ -68,9 +68,10 @@ public class Application {
                                              AuditService auditService,
                                              ObjectProvider<KafkaTemplate<String, String>> kafkaTemplateProvider,
                                              MessageRepository messageRepository,
-                                             GroupChatRepository groupChatRepository) {
+                                             GroupChatRepository groupChatRepository,
+                                             org.springframework.messaging.simp.SimpMessagingTemplate messagingTemplate) {
         return new MessagingService(cryptoService, keyVault, auditService,
-                kafkaTemplateProvider.getIfAvailable(), messageRepository, groupChatRepository);
+                kafkaTemplateProvider.getIfAvailable(), messageRepository, groupChatRepository, messagingTemplate);
     }
 
     @Bean

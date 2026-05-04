@@ -128,4 +128,38 @@ M.$("btn-offline").addEventListener("click", async () => {
 ensureUserSelects();
 setMsgOut("Сценарий: отправка -> статус -> история/офлайн. Если список пуст, сначала создай пользователей.");
 
+// WS CONNECTION
+let stompClient = null;
+
+function connectWebSockets() {
+  const users = M.loadUsers();
+  if (users.length === 0) return;
+
+  const socket = new SockJS('/ws');
+  stompClient = Stomp.over(socket);
+  stompClient.debug = null; 
+
+  stompClient.connect({}, function (frame) {
+    users.forEach(user => {
+      stompClient.subscribe('/topic/user.' + user.id, function (message) {
+        const body = JSON.parse(message.body);
+        showWsNotification(user.login, body);
+      });
+    });
+  });
+}
+
+function showWsNotification(login, data) {
+  const note = document.createElement('div');
+  note.style.borderLeft = '4px solid var(--green)';
+  note.style.padding = '8px';
+  note.style.marginBottom = '8px';
+  note.style.background = 'var(--bg-card)';
+  note.innerHTML = `<strong style="color:var(--green)">⚡ WS Event [${login}]</strong>: <code>${data.type}</code> - msgId: ${data.message.id.slice(0, 8)}...`;
+  
+  const container = M.$("messages-out");
+  container.parentNode.insertBefore(note, container);
+}
+
+connectWebSockets();
 
