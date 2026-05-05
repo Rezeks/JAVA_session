@@ -39,4 +39,11 @@ public class AiAdminService {
 
         return aiClient.generateResponse(systemPrompt, userMessage);
     }
+
+    public String askQuestion(String question) {
+        String systemPrompt = "Ты - эксперт по криптографии и информационной безопасности. " +
+                "Твоя задача — отвечать на вопросы пользователя про алгоритмы шифрования (AES, RSA, DES и т.д.), хеширования и общую безопасность. " +
+                "Объясняй всё кратко, понятно и только на русском языке. Используй разметку Markdown (выделение жирным, списки).";
+        return aiClient.generateResponse(systemPrompt, question);
+    }
 }

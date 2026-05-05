@@ -175,8 +175,20 @@
 <div id="page-encryption" class="page">
   <h2 style="font-size:22px;margin-bottom:16px">🛡️ Сравнение методов шифрования</h2>
 
+  <div class="card" style="margin-bottom:16px; background: linear-gradient(145deg, #1e293b, #0f172a); border: 1px solid #3b82f640;">
+    <h2 style="display:flex;align-items:center;gap:8px;color:#60a5fa">🤖 AI Крипто-ассистент</h2>
+    <div class="hint" style="margin-top:0">Спроси у встроенной нейросети (Gemini/Llama) всё, что хочешь знать про шифры, алгоритмы и безопасность.</div>
+    <div class="row" style="margin-top:12px">
+      <div class="field" style="flex:4">
+        <input id="ai-question" placeholder="Например: В чем разница между симметричным и асимметричным шифрованием?" onkeypress="if(event.key === 'Enter') doAiAsk()">
+      </div>
+      <button class="btn btn-primary" onclick="doAiAsk()" id="btn-ai-ask" style="margin-top:auto">Спросить</button>
+    </div>
+    <div id="ai-answer" style="margin-top:16px; padding:12px; background:#0f172a; border-radius:6px; font-size:13px; line-height:1.6; color:#e2e8f0; display:none; white-space:pre-wrap; border-left: 3px solid #3b82f6;"></div>
+  </div>
+
   <div class="hint">
-    Тест шифрует и расшифровывает текст каждым из 7 алгоритмов, измеряет время и проверяет корректность.
+    Тест ниже шифрует и расшифровывает текст каждым из 7 алгоритмов, измеряет время и проверяет корректность.
     AES-256-GCM — стандарт проекта. DES показан для демонстрации уязвимости.
   </div>
 

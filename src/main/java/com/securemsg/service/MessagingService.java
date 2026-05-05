@@ -182,7 +182,9 @@ public class MessagingService {
             messageRepository.save(msg);
             pulled.add(msg);
         }
-        auditService.record("OFFLINE_QUEUE_PULL", userId.toString(), "Pulled=" + pulled.size());
+        if (!pulled.isEmpty()) {
+            auditService.record("OFFLINE_QUEUE_PULL", userId.toString(), "Pulled=" + pulled.size());
+        }
         return pulled;
     }
 

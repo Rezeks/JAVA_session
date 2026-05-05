@@ -35,12 +35,11 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
-    @Operation(summary = "Регистрация нового пользователя",
-            description = "Создаёт пользователя, хеширует пароль (PBKDF2), возвращает JWT токен")
+    @Operation(summary = "Регистрация нового пользователя", description = "Создаёт пользователя, хеширует пароль (PBKDF2), возвращает JWT токен")
     @PostMapping("/register")
     public Map<String, Object> register(@RequestBody RegisterRequest request) {
-        @NonNull Role role = request.role() == null ? Role.USER : request.role();
-        @NonNull String token = request.hardwareToken() == null || request.hardwareToken().isBlank()
+        Role role = request.role() == null ? Role.USER : request.role();
+        String token = request.hardwareToken() == null || request.hardwareToken().isBlank()
                 ? UUID.randomUUID().toString().substring(0, 8)
                 : request.hardwareToken();
         User user = userService.register(request.login(), request.password(), role, token);
@@ -53,14 +52,12 @@ public class AuthController {
                 "id", user.id(),
                 "login", user.login(),
                 "role", user.role(),
-                "hardwareToken", user.hardwareTokenSecret()
-        ));
+                "hardwareToken", user.hardwareTokenSecret()));
         response.put("token", jwt);
         return response;
     }
 
-    @Operation(summary = "Вход (логин)",
-            description = "Аутентификация по логину + пароль + 2FA токен. Возвращает JWT")
+    @Operation(summary = "Вход (логин)", description = "Аутентификация по логину + пароль + 2FA токен. Возвращает JWT")
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody LoginRequest request) {
         boolean authenticated;
@@ -84,12 +81,14 @@ public class AuthController {
         response.put("user", Map.of(
                 "id", user.id(),
                 "login", user.login(),
-                "role", user.role()
-        ));
+                "role", user.role()));
         response.put("token", jwt);
         return response;
     }
 
-    public record RegisterRequest(@NonNull String login, @NonNull String password, Role role, String hardwareToken) {}
-    public record LoginRequest(@NonNull String login, @NonNull String password, String hardwareToken) {}
+    public record RegisterRequest(@NonNull String login, @NonNull String password, Role role, String hardwareToken) {
+    }
+
+    public record LoginRequest(@NonNull String login, @NonNull String password, String hardwareToken) {
+    }
 }

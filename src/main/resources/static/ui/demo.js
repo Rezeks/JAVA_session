@@ -180,7 +180,7 @@ async function loadOverviewStats() {
     animateCounter('stat-users-val', users.length);
 
     // Count total messages from audit
-    const msgEvents = audit.filter(e => e.eventType && (e.eventType.includes('MESSAGE') || e.eventType.includes('HISTORY')));
+    const msgEvents = audit.filter(e => e.action && (e.action.includes('MESSAGE') || e.action.includes('HISTORY')));
     animateCounter('stat-messages-val', msgEvents.length);
     animateCounter('stat-audit-val', audit.length);
 
@@ -188,7 +188,7 @@ async function loadOverviewStats() {
     // Audit by type
     const typeCounts = {};
     audit.forEach(e => {
-      const type = e.eventType || 'UNKNOWN';
+      const type = e.action || 'UNKNOWN';
       typeCounts[type] = (typeCounts[type] || 0) + 1;
     });
     const sortedTypes = Object.entries(typeCounts).sort((a,b) => b[1] - a[1]).slice(0, 8);
@@ -303,10 +303,22 @@ async function doLoadHistory() {
     const msgs = await api('GET', `/messages/history/${userId}`);
     log(logEl, `Найдено сообщений: ${msgs.length}`, 'ok');
 
-    msgs.forEach((m, i) => {
-      const dir = m.senderId === userId ? '📤 ИСХОД' : '📥 ВХОД';
+    for (let i = 0; i < msgs.length; i++) {
+      const m = msgs[i];
+      const isOutgoing = m.senderId === userId;
+      const dir = isOutgoing ? '📤 ИСХОД' : '📥 ВХОД';
       log(logEl, `${dir} #${i+1}: ID=${m.id} | Статус: ${m.status}`, 'info');
-    });
+      
+      // Автоматическая расшифровка для входящих сообщений
+      if (!isOutgoing) {
+        try {
+          const dec = await api('POST', `/messages/${m.id}/decrypt?recipientId=${userId}`);
+          log(logEl, `   🔓 Расшифровано: "${dec.plaintext}"`, 'key');
+        } catch(err) {
+          log(logEl, `   ❌ Ошибка расшифровки: ${err.message}`, 'err');
+        }
+      }
+    }
   } catch(e) {
     log(logEl, `❌ ${e.message}`, 'err');
   }
@@ -377,6 +389,35 @@ async function doEncryptionTest() {
   }
 }
 
+// ============ AI ASSISTANT ============
+async function doAiAsk() {
+  const qInput = document.getElementById('ai-question');
+  const aBox = document.getElementById('ai-answer');
+  const btn = document.getElementById('btn-ai-ask');
+  const q = qInput.value.trim();
+  
+  if (!q) return;
+  
+  aBox.style.display = 'block';
+  aBox.innerHTML = '<span style="color:var(--muted)">⏳ Нейросеть думает...</span>';
+  btn.disabled = true;
+  
+  try {
+    const resp = await api('POST', '/ai/admin/ask', { question: q });
+    // Simple markdown formatting
+    let html = resp.answer
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/\*\*(.*?)\*\*/g, '<b style="color:#fff">$1</b>')
+      .replace(/\*(.*?)\*/g, '<i>$1</i>');
+      
+    aBox.innerHTML = html;
+  } catch(e) {
+    aBox.innerHTML = `<span style="color:var(--red)">❌ Ошибка: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 // ============ AUDIT ============
 async function doLoadAudit() {
   try {
@@ -385,9 +426,9 @@ async function doLoadAudit() {
 
     // Update stats
     document.getElementById('audit-total').textContent = events.length;
-    const authCount = events.filter(e => e.eventType && (e.eventType.includes('AUTH') || e.eventType.includes('REGISTER') || e.eventType.includes('LOGIN'))).length;
-    const msgCount = events.filter(e => e.eventType && e.eventType.includes('MESSAGE')).length;
-    const keyCount = events.filter(e => e.eventType && (e.eventType.includes('KEY') || e.eventType.includes('CRYPTO') || e.eventType.includes('RECOVERY'))).length;
+    const authCount = events.filter(e => e.action && (e.action.includes('AUTH') || e.action.includes('REGISTER') || e.action.includes('LOGIN'))).length;
+    const msgCount = events.filter(e => e.action && e.action.includes('MESSAGE')).length;
+    const keyCount = events.filter(e => e.action && (e.action.includes('KEY') || e.action.includes('CRYPTO') || e.action.includes('RECOVERY'))).length;
     document.getElementById('audit-auth').textContent = authCount;
     document.getElementById('audit-msg').textContent = msgCount;
     document.getElementById('audit-keys').textContent = keyCount;
@@ -397,12 +438,12 @@ async function doLoadAudit() {
       return;
     }
     tbody.innerHTML = events.slice(-50).reverse().map(e => {
-      const typeColor = e.eventType?.includes('FAIL') || e.eventType?.includes('BLOCK')
-        ? 'badge-red' : e.eventType?.includes('OK') ? 'badge-green' : 'badge-blue';
+      const typeColor = e.action?.includes('FAIL') || e.action?.includes('BLOCK')
+        ? 'badge-red' : e.action?.includes('OK') ? 'badge-green' : 'badge-blue';
       return `<tr>
         <td style="font-size:11px;color:var(--muted)">${new Date(e.timestamp).toLocaleString('ru-RU')}</td>
-        <td><span class="badge ${typeColor}">${e.eventType}</span></td>
-        <td>${e.userId || '—'}</td>
+        <td><span class="badge ${typeColor}">${e.action}</span></td>
+        <td>${e.actor || '—'}</td>
         <td style="font-size:11px">${e.details || ''}</td>
       </tr>`;
     }).join('');

@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/**").permitAll()
                         .requestMatchers("/api/audit").permitAll()
                         .requestMatchers("/api/messages/**").permitAll()
+                        .requestMatchers("/api/ai/admin/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
 
                         // Admin-only endpoints
